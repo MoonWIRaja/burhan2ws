@@ -1,0 +1,549 @@
+/* Google Fonts - MUST be at the very top */
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Orbitron:wght@400;500;600;700;800;900&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================================
+   CSS VARIABLES - SIMPLE BLACK/WHITE NEON
+   ============================================ */
+:root {
+  /* Neon Animation Properties */
+  --neon-duration: 3s;
+  --neon-intensity: 1;
+  --glass-opacity: 0.1;
+  --border-radius: 0.75rem;
+  --terminal-glow: 0 0 10px rgba(255, 255, 255, 0.5);
+
+  /* Simple Neon Colors - status indicators */
+  --neon-red: #ff4444;
+  --neon-green: #44ff44;
+  --neon-yellow: #ffff44;
+}
+
+/* ============================================
+   DARK THEME - Black with White Neon
+   ============================================ */
+.dark {
+  --background: 0 0% 3%;
+  --foreground: 0 0% 95%;
+  --card: 0 0% 6%;
+  --card-foreground: 0 0% 95%;
+  --popover: 0 0% 6%;
+  --popover-foreground: 0 0% 95%;
+  --primary: 0 0% 100%;
+  --primary-foreground: 0 0% 0%;
+  --secondary: 0 0% 20%;
+  --secondary-foreground: 0 0% 100%;
+  --muted: 0 0% 15%;
+  --muted-foreground: 0 0% 60%;
+  --accent: 0 0% 100%;
+  --accent-foreground: 0 0% 0%;
+  --destructive: 0 70% 50%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 0 0% 20%;
+  --input: 0 0% 12%;
+  --ring: 0 0% 100%;
+  --radius: 0.75rem;
+
+  /* Theme Specific - Black bg, White neon */
+  --bg: #000000;
+  --panel: #0a0a0a;
+  --text: #ffffff;
+  --text-dim: #666666;
+  --neon-color-primary: #ffffff;
+  --neon-color-secondary: #cccccc;
+  --neon-glow: rgba(255, 255, 255, 0.8);
+}
+
+/* ============================================
+   LIGHT THEME - White with Black Neon
+   ============================================ */
+.light {
+  --background: 0 0% 98%;
+  --foreground: 0 0% 5%;
+  --card: 0 0% 100%;
+  --card-foreground: 0 0% 5%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 0 0% 5%;
+  --primary: 0 0% 0%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 0 0% 90%;
+  --secondary-foreground: 0 0% 0%;
+  --muted: 0 0% 95%;
+  --muted-foreground: 0 0% 40%;
+  --accent: 0 0% 0%;
+  --accent-foreground: 0 0% 100%;
+  --destructive: 0 70% 50%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 0 0% 85%;
+  --input: 0 0% 95%;
+  --ring: 0 0% 0%;
+  --radius: 0.75rem;
+
+  /* Theme Specific - White bg, Black neon */
+  --bg: #ffffff;
+  --panel: #fafafa;
+  --text: #000000;
+  --text-dim: #888888;
+  --neon-color-primary: #000000;
+  --neon-color-secondary: #333333;
+  --neon-glow: rgba(0, 0, 0, 0.6);
+}
+
+/* ============================================
+   SIMPLE NEON PULSE ANIMATION
+   ============================================ */
+@keyframes neon-pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+.neon-shift {
+  animation: neon-pulse var(--neon-duration) ease-in-out infinite;
+}
+
+/* ============================================
+   NEON GLOW ANIMATIONS
+   ============================================ */
+@keyframes neon-pulse-glow {
+  0%, 100% {
+    box-shadow: 
+      0 0 5px var(--neon-color-primary),
+      0 0 10px var(--neon-color-primary),
+      0 0 20px var(--neon-color-primary);
+    opacity: 1;
+  }
+  50% {
+    box-shadow: 
+      0 0 10px var(--neon-color-primary),
+      0 0 20px var(--neon-color-primary),
+      0 0 40px var(--neon-color-primary);
+    opacity: 0.85;
+  }
+}
+
+@keyframes neon-text-glow {
+  0%, 100% {
+    text-shadow: 
+      0 0 5px var(--neon-color-primary),
+      0 0 10px var(--neon-color-primary),
+      0 0 20px var(--neon-color-primary);
+  }
+  50% {
+    text-shadow: 
+      0 0 10px var(--neon-color-primary),
+      0 0 20px var(--neon-color-primary),
+      0 0 40px var(--neon-color-primary);
+  }
+}
+
+@keyframes border-gradient-flow {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+/* ============================================
+   NEON UTILITY CLASSES - SIMPLE BLACK/WHITE
+   ============================================ */
+@layer utilities {
+  /* Neon Border */
+  .neon-border {
+    border: 1px solid var(--neon-color-primary);
+    box-shadow: 0 0 8px var(--neon-glow);
+  }
+
+  .neon-border-animated {
+    border: 1px solid var(--neon-color-primary);
+    box-shadow: 0 0 8px var(--neon-glow);
+    animation: neon-pulse 3s ease-in-out infinite;
+  }
+
+  /* Neon Text */
+  .neon-text {
+    color: var(--neon-color-primary);
+    text-shadow: 0 0 8px var(--neon-glow);
+  }
+
+  .neon-text-animated {
+    color: var(--neon-color-primary);
+    text-shadow: 0 0 10px var(--neon-glow);
+    animation: neon-pulse 3s ease-in-out infinite;
+  }
+
+  /* Neon Card */
+  .neon-card {
+    background: var(--panel);
+    border: 1px solid var(--neon-color-primary);
+    border-radius: var(--border-radius);
+    box-shadow: 0 0 15px var(--neon-glow);
+  }
+
+  .neon-card-animated {
+    background: var(--panel);
+    border: 1px solid var(--neon-color-primary);
+    border-radius: var(--border-radius);
+    box-shadow: 0 0 15px var(--neon-glow);
+    animation: neon-pulse 3s ease-in-out infinite;
+  }
+
+  /* Neon Button */
+  .neon-button {
+    background: transparent;
+    border: 1px solid var(--neon-color-primary);
+    color: var(--neon-color-primary);
+    padding: 0.5rem 1.5rem;
+    border-radius: var(--border-radius);
+    font-family: 'JetBrains Mono', monospace;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    transition: all 0.3s ease;
+    box-shadow: 0 0 8px var(--neon-glow);
+  }
+
+  .neon-button:hover {
+    background: var(--neon-color-primary);
+    color: var(--bg);
+    box-shadow: 0 0 20px var(--neon-glow);
+  }
+
+  /* Terminal Input */
+  .terminal-input {
+    background: rgba(0, 0, 0, 0.8);
+    border: 1px solid var(--neon-color-primary);
+    border-radius: 4px;
+    padding: 0.75rem 1rem;
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--neon-color-primary);
+    box-shadow: 
+      0 0 5px var(--neon-color-primary),
+      inset 0 0 10px rgba(0, 0, 0, 0.5);
+  }
+
+  .terminal-input:focus {
+    outline: none;
+    box-shadow: 
+      0 0 10px var(--neon-color-primary),
+      0 0 20px var(--neon-color-primary),
+      inset 0 0 10px rgba(0, 0, 0, 0.5);
+  }
+
+  .terminal-input::placeholder {
+    color: var(--text-dim);
+  }
+
+  /* Glass Panel */
+  .glass-panel {
+    background: rgba(10, 10, 10, var(--glass-opacity));
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: var(--border-radius);
+  }
+
+  .dark .glass-panel {
+    background: rgba(10, 10, 10, 0.8);
+  }
+
+  .light .glass-panel {
+    background: rgba(255, 255, 255, 0.8);
+    border: 1px solid rgba(0, 136, 255, 0.2);
+  }
+
+  /* Neon Outline */
+  .neon-outline {
+    outline: 2px solid var(--neon-color-primary);
+    outline-offset: 2px;
+    box-shadow: 0 0 10px var(--neon-color-primary);
+  }
+
+  /* Neon Hover Effects */
+  .neon-hover {
+    transition: all 0.3s ease;
+  }
+
+  .neon-hover:hover {
+    box-shadow: 
+      0 0 15px var(--neon-color-primary),
+      0 0 30px var(--neon-color-secondary);
+    border-color: var(--neon-color-primary);
+  }
+
+  /* Gradient Border */
+  .gradient-border {
+    position: relative;
+    background: var(--panel);
+    border-radius: var(--border-radius);
+  }
+
+  .gradient-border::before {
+    content: '';
+    position: absolute;
+    inset: -2px;
+    border-radius: calc(var(--border-radius) + 2px);
+    background: linear-gradient(
+      90deg,
+      var(--neon-red),
+      var(--neon-blue),
+      var(--neon-magenta),
+      var(--neon-cyan),
+      var(--neon-green),
+      var(--neon-purple),
+      var(--neon-red)
+    );
+    background-size: 300% 100%;
+    animation: border-gradient-flow 12s linear infinite;
+    z-index: -1;
+  }
+
+  /* Hologram Effect */
+  .hologram {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .hologram::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      180deg,
+      transparent 0%,
+      rgba(0, 255, 255, 0.03) 50%,
+      transparent 100%
+    );
+    animation: scan-line 8s linear infinite;
+    pointer-events: none;
+  }
+
+  /* Cyberpunk Scrollbar */
+  .cyber-scrollbar::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  .cyber-scrollbar::-webkit-scrollbar-track {
+    background: var(--panel);
+    border-radius: 4px;
+  }
+
+  .cyber-scrollbar::-webkit-scrollbar-thumb {
+    background: var(--neon-color-primary);
+    border-radius: 4px;
+    box-shadow: 0 0 5px var(--neon-color-primary);
+  }
+
+  .cyber-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: var(--neon-color-secondary);
+    box-shadow: 0 0 10px var(--neon-color-secondary);
+  }
+
+  /* Matrix Background */
+  .matrix-bg {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .matrix-bg::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: 
+      radial-gradient(ellipse at center, transparent 0%, var(--bg) 70%),
+      repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(0, 255, 136, 0.03) 2px,
+        rgba(0, 255, 136, 0.03) 4px
+      );
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* Terminal Cursor */
+  .terminal-cursor::after {
+    content: '▊';
+    animation: terminal-blink 1s step-end infinite;
+    color: var(--neon-color-primary);
+  }
+
+  @keyframes terminal-blink {
+    0%, 50% { opacity: 1; }
+    51%, 100% { opacity: 0; }
+  }
+
+  /* Status Indicators */
+  .status-connected {
+    color: var(--neon-green);
+    text-shadow: 0 0 10px var(--neon-green);
+  }
+
+  .status-disconnected {
+    color: var(--neon-red);
+    text-shadow: 0 0 10px var(--neon-red);
+    animation: neon-pulse-glow 2s ease-in-out infinite;
+  }
+
+  .status-connecting {
+    color: var(--neon-yellow);
+    text-shadow: 0 0 10px var(--neon-yellow);
+    animation: neon-pulse-glow 1s ease-in-out infinite;
+  }
+}
+
+/* ============================================
+   BASE STYLES
+   ============================================ */
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-background text-foreground font-mono;
+    font-feature-settings: "rlig" 1, "calt" 1;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+  }
+
+  /* Selection */
+  ::selection {
+    background: var(--neon-color-primary);
+    color: var(--bg);
+  }
+
+  /* Focus styles */
+  :focus-visible {
+    outline: 2px solid var(--neon-color-primary);
+    outline-offset: 2px;
+  }
+}
+
+/* ============================================
+   COMPONENT STYLES
+   ============================================ */
+@layer components {
+  /* Sidebar */
+  .sidebar-neon {
+    background: var(--panel);
+    border-right: 1px solid var(--neon-color-primary);
+    box-shadow: 
+      5px 0 20px rgba(0, 255, 255, 0.1),
+      inset 0 0 50px rgba(0, 255, 255, 0.02);
+  }
+
+  /* QR Box */
+  .qr-box-neon {
+    background: rgba(0, 0, 0, 0.9);
+    border: 2px solid var(--neon-color-primary);
+    border-radius: 1rem;
+    padding: 2rem;
+    box-shadow: 
+      0 0 30px var(--neon-color-primary),
+      inset 0 0 30px rgba(0, 255, 255, 0.1);
+    animation: neon-color-shift 12s ease-in-out infinite;
+  }
+
+  /* Chart Container */
+  .chart-neon {
+    background: var(--panel);
+    border: 1px solid var(--neon-color-primary);
+    border-radius: var(--border-radius);
+    padding: 1.5rem;
+    box-shadow: 0 0 20px rgba(0, 255, 255, 0.1);
+  }
+
+  /* Flow Builder Node */
+  .flow-node-neon {
+    background: var(--panel);
+    border: 2px solid var(--neon-color-primary);
+    border-radius: 8px;
+    padding: 1rem;
+    box-shadow: 
+      0 0 15px var(--neon-color-primary),
+      inset 0 0 20px rgba(0, 255, 255, 0.05);
+    transition: all 0.3s ease;
+  }
+
+  .flow-node-neon:hover {
+    box-shadow: 
+      0 0 25px var(--neon-color-primary),
+      0 0 50px var(--neon-color-secondary),
+      inset 0 0 30px rgba(0, 255, 255, 0.1);
+  }
+
+  /* Data Table */
+  .table-neon {
+    border: 1px solid var(--neon-color-primary);
+    border-radius: var(--border-radius);
+    overflow: hidden;
+  }
+
+  .table-neon th {
+    background: rgba(0, 255, 255, 0.1);
+    border-bottom: 1px solid var(--neon-color-primary);
+  }
+
+  .table-neon tr:hover {
+    background: rgba(0, 255, 255, 0.05);
+  }
+
+  /* Modal/Dialog */
+  .modal-neon {
+    background: var(--panel);
+    border: 2px solid var(--neon-color-primary);
+    border-radius: 1rem;
+    box-shadow: 
+      0 0 50px var(--neon-color-primary),
+      inset 0 0 50px rgba(0, 255, 255, 0.05);
+  }
+
+  /* Toast */
+  .toast-neon {
+    background: var(--panel);
+    border: 1px solid var(--neon-color-primary);
+    border-radius: 8px;
+    box-shadow: 0 0 20px var(--neon-color-primary);
+  }
+}
+
+/* ============================================
+   REDUCED MOTION SUPPORT
+   ============================================ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  
+  .neon-shift,
+  .neon-border-animated,
+  .neon-text-animated,
+  .neon-card-animated {
+    animation: none !important;
+  }
+}
+
+
+

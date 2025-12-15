@@ -1,0 +1,409 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  ADMIN
+  USER
+  SUBUSER
+}
+
+enum UserStatus {
+  ACTIVE
+  DISABLED
+  PENDING
+}
+
+enum SessionStatus {
+  CONNECTED
+  DISCONNECTED
+  CONNECTING
+  QR_PENDING
+  LOGGED_OUT
+}
+
+enum BlastStatus {
+  DRAFT
+  SCHEDULED
+  RUNNING
+  COMPLETED
+  PAUSED
+  CANCELLED
+  FAILED
+}
+
+enum MessageStatus {
+  PENDING
+  QUEUED
+  SENT
+  DELIVERED
+  READ
+  FAILED
+}
+
+enum BlastSpeed {
+  NORMAL
+  SLOW
+  RANDOM
+}
+
+enum BotNodeType {
+  MESSAGE
+  CONDITION
+  DELAY
+  SEND_MEDIA
+  JUMP
+  START
+  END
+}
+
+enum NotificationType {
+  MESSAGE
+  BLAST_COMPLETED
+  BLAST_FAILED
+  WHATSAPP_DISCONNECTED
+  WHATSAPP_CONNECTED
+  SYSTEM
+}
+
+model User {
+  id          String     @id @default(cuid())
+  phone       String?    @unique
+  name        String?
+  role        UserRole   @default(USER)
+  status      UserStatus @default(PENDING)
+  theme       String     @default("dark")
+  parentId    String?
+  parent      User?      @relation("SubUsers", fields: [parentId], references: [id])
+  subUsers    User[]     @relation("SubUsers")
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  lastLoginAt DateTime?
+
+  // Relations
+  whatsappSession WhatsAppSession?
+  contacts        Contact[]
+  blasts          Blast[]
+  botRules        BotRule[]
+  botFlows        BotFlow[]
+  botConfigs      BotConfig[]
+  analytics       Analytics[]
+  logs            Log[]
+  messages        Message[]
+  chats           Chat[]
+  notifications   Notification[]
+
+  @@index([phone])
+  @@index([role])
+  @@index([status])
+}
+
+model WhatsAppSession {
+  id            String        @id @default(cuid())
+  userId        String        @unique
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sessionData   String        @db.LongText // Encrypted session data
+  status        SessionStatus @default(QR_PENDING)
+  qrCode        String?       @db.Text
+  phone         String?
+  deviceName    String?
+  lastConnected DateTime?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  @@index([status])
+}
+
+model Contact {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  phone     String
+  name      String?
+  tags      String?  @db.Text // JSON array of tags
+  groups    String?  @db.Text // JSON array of group ids
+  notes     String?  @db.Text
+  isBlocked Boolean  @default(false)
+  autoSaved Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  blastMessages BlastMessage[]
+  messages      Message[]
+  chats         Chat[]
+
+  @@unique([userId, phone])
+  @@index([userId])
+  @@index([phone])
+}
+
+model Blast {
+  id                String      @id @default(cuid())
+  userId            String
+  user              User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name              String
+  message           String      @db.Text
+  mediaUrl          String?     @db.LongText // Can store base64 data URLs
+  mediaType         String? // image, video, audio, document
+  buttonData        String?     @db.LongText // JSON for quick reply buttons and multi-attachments
+  status            BlastStatus @default(DRAFT)
+  speed             BlastSpeed  @default(NORMAL)
+  minDelay          Int         @default(3000) // milliseconds
+  maxDelay          Int         @default(5000) // milliseconds
+  scheduledAt       DateTime?
+  startedAt         DateTime?
+  completedAt       DateTime?
+  totalRecipients   Int         @default(0)
+  sentCount         Int         @default(0)
+  deliveredCount    Int         @default(0)
+  readCount         Int         @default(0)
+  failedCount       Int         @default(0)
+  // Scheduling fields
+  isScheduled       Boolean     @default(false) // Toggle on/off for scheduling
+  scheduleStartDate DateTime? // Start date for scheduled blast
+  scheduleEndDate   DateTime? // End date for scheduled blast
+  scheduleTime      String? // Time in HH:mm format (e.g., "12:00")
+  scheduleDays      String?     @db.Text // JSON array of days (0=Sunday, 1=Monday, etc.) - null/empty = every day
+  lastScheduledRun  DateTime? // Track last time scheduled blast was sent
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+
+  // Relations
+  messages BlastMessage[]
+
+  @@index([userId])
+  @@index([status])
+  @@index([scheduledAt])
+  @@index([isScheduled, scheduleStartDate, scheduleEndDate])
+}
+
+model BlastMessage {
+  id          String        @id @default(cuid())
+  blastId     String
+  blast       Blast         @relation(fields: [blastId], references: [id], onDelete: Cascade)
+  contactId   String
+  contact     Contact       @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  status      MessageStatus @default(PENDING)
+  messageId   String? // WhatsApp message ID
+  error       String?       @db.LongText
+  sentAt      DateTime?
+  deliveredAt DateTime?
+  readAt      DateTime?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  @@index([blastId])
+  @@index([contactId])
+  @@index([status])
+}
+
+model BotRule {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name       String
+  keywords   String   @db.Text // JSON array of keywords
+  response   String   @db.Text
+  mediaUrl   String?  @db.LongText
+  mediaType  String?
+  buttonData String?  @db.LongText
+  isActive   Boolean  @default(true)
+  isGreeting Boolean  @default(false)
+  priority   Int      @default(0)
+  matchType  String   @default("contains") // exact, contains, startsWith, regex
+  autoTag    String? // Tag to apply when rule triggers
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([userId])
+  @@index([isActive])
+}
+
+model BotFlow {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name            String
+  description     String?  @db.Text
+  isActive        Boolean  @default(false)
+  triggerKeywords String?  @db.Text // JSON array
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  nodes BotNode[]
+
+  @@index([userId])
+  @@index([isActive])
+}
+
+model BotNode {
+  id         String      @id @default(cuid())
+  flowId     String
+  flow       BotFlow     @relation(fields: [flowId], references: [id], onDelete: Cascade)
+  type       BotNodeType
+  label      String
+  data       String      @db.Text // JSON node data
+  positionX  Float
+  positionY  Float
+  nextNodes  String?     @db.Text // JSON array of next node IDs
+  conditions String?     @db.Text // JSON conditions for conditional nodes
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+
+  @@index([flowId])
+}
+
+model BotConfig {
+  id           String    @id @default(cuid())
+  userId       String    @unique // One bot per user
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  isActive     Boolean   @default(false) // Bot running status
+  isRunning    Boolean   @default(false) // Current running state
+  activeFileId String? // Currently active file ID
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  lastStarted  DateTime? // Last time bot was started
+  lastStopped  DateTime? // Last time bot was stopped
+  files        BotFile[] // Multiple files for this bot
+
+  @@index([userId])
+  @@index([isActive])
+  @@index([isRunning])
+}
+
+model BotFile {
+  id          String    @id @default(cuid())
+  botConfigId String
+  botConfig   BotConfig @relation(fields: [botConfigId], references: [id], onDelete: Cascade)
+  fileName    String // e.g., "main.js", "config.json"
+  fileType    String // "javascript", "json", "typescript", etc.
+  content     String    @db.LongText // File content
+  isMain      Boolean   @default(false) // Main entry file
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([botConfigId])
+  @@index([isMain])
+}
+
+model Chat {
+  id            String    @id @default(cuid())
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  contactId     String?
+  contact       Contact?  @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  remoteJid     String // WhatsApp JID
+  isGroup       Boolean   @default(false)
+  unreadCount   Int       @default(0)
+  lastMessageAt DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relations
+  messages Message[]
+
+  @@unique([userId, remoteJid])
+  @@index([userId])
+  @@index([lastMessageAt])
+}
+
+model Message {
+  id              String        @id @default(cuid())
+  chatId          String
+  chat            Chat          @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  userId          String
+  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  contactId       String?
+  contact         Contact?      @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  messageId       String // WhatsApp message ID
+  fromMe          Boolean
+  type            String // text, image, video, audio, document, sticker, etc.
+  content         String?       @db.Text
+  mediaUrl        String?       @db.LongText
+  mediaCaption    String?       @db.Text
+  quotedMessageId String?
+  status          MessageStatus @default(SENT)
+  timestamp       DateTime
+  createdAt       DateTime      @default(now())
+
+  @@index([chatId])
+  @@index([userId])
+  @@index([messageId])
+  @@index([timestamp])
+}
+
+model Analytics {
+  id               String   @id @default(cuid())
+  userId           String
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date             DateTime @db.Date
+  blastCount       Int      @default(0)
+  blastSent        Int      @default(0)
+  blastDelivered   Int      @default(0)
+  blastRead        Int      @default(0)
+  blastFailed      Int      @default(0)
+  botInteractions  Int      @default(0)
+  messagesReceived Int      @default(0)
+  messagesSent     Int      @default(0)
+  newContacts      Int      @default(0)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@unique([userId, date])
+  @@index([userId])
+  @@index([date])
+}
+
+model Log {
+  id        String   @id @default(cuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  action    String
+  details   String?  @db.Text
+  ipAddress String?
+  userAgent String?  @db.Text
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([action])
+  @@index([createdAt])
+}
+
+model SubscriptionPlan {
+  id           String   @id @default(cuid())
+  name         String
+  description  String?  @db.Text
+  price        Float
+  currency     String   @default("MYR")
+  blastLimit   Int      @default(-1) // -1 = unlimited
+  contactLimit Int      @default(-1)
+  botFlowLimit Int      @default(-1)
+  features     String?  @db.Text // JSON array of features
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      NotificationType
+  title     String
+  message   String           @db.Text
+  link      String? // Optional link to related resource (e.g., /chat/xxx, /blast/xxx)
+  isRead    Boolean          @default(false)
+  createdAt DateTime         @default(now())
+  readAt    DateTime?
+
+  @@index([userId])
+  @@index([isRead])
+  @@index([createdAt])
+}
