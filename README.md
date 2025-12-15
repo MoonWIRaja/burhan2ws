@@ -3,7 +3,7 @@
 Sistem ini ialah aplikasi **Next.js 14 (App Router)** dengan integrasi:
 
 - **Prisma** sebagai ORM
-- **PostgreSQL** (atau mana-mana DB yang disokong Prisma)
+- **MySql** (atau mana-mana DB yang disokong Prisma)
 - **Redis + BullMQ** untuk queue/worker
 - **Baileys** untuk integrasi WhatsApp
 
@@ -17,10 +17,10 @@ Pastikan anda sudah install:
 
 - **Node.js** v18 atau v20 (disyorkan LTS)
 - **npm** atau **pnpm/yarn** (contoh di sini guna `npm`)
-- **PostgreSQL** (atau DB lain yang anda mahu guna dengan Prisma)
+- **MySql** (atau DB lain yang anda mahu guna dengan Prisma)
 - **Redis server** (contoh: `redis-server` berjalan di `localhost:6379`)
 
-> Jika anda guna Docker, anda boleh guna container untuk PostgreSQL dan Redis.
+> Jika anda guna Docker, anda boleh guna container untuk MySql dan Redis.
 
 ---
 
@@ -57,7 +57,7 @@ Contoh struktur asas (ubah ikut keperluan anda):
 
 ```env
 # Database
-DATABASE_URL="postgresql://user:password@localhost:5432/burhan2ws?schema=public"
+DATABASE_URL="mysql://user:password@localhost:5432/burhan2ws?schema=public"
 
 # JWT & Encryption
 JWT_SECRET="your_jwt_secret_here"
