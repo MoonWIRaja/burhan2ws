@@ -1,0 +1,183 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 224 71% 4%;
+    --foreground: 210 40% 98%;
+    --card: 224 71% 4%;
+    --card-foreground: 210 40% 98%;
+    --popover: 224 71% 4%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 263 70% 50%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 215 25% 27%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217 33% 17%;
+    --muted-foreground: 215 20% 65%;
+    --accent: 217 33% 17%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 63% 31%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217 33% 17%;
+    --input: 217 33% 17%;
+    --ring: 263 70% 50%;
+    --radius: 0.75rem;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-matrix-darker/30;
+  }
+
+  body {
+    @apply bg-matrix-darker text-gray-100 min-h-screen;
+  }
+
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    @apply w-2;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-matrix-darker;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-matrix-purple/50 rounded-full;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-matrix-purple/70;
+  }
+}
+
+@layer components {
+  /* ISO 3D Card Component */
+  .iso-card {
+    @apply bg-gradient-to-br from-matrix-dark to-matrix-darker 
+           border border-matrix-purple/30 
+           shadow-iso-purple
+           rounded-xl
+           transition-all duration-300
+           hover:shadow-iso-lg hover:scale-[1.02]
+           hover:border-matrix-purple/50;
+  }
+
+  .iso-card-cyan {
+    @apply shadow-iso-cyan hover:border-matrix-cyan/50;
+  }
+
+  .iso-card-green {
+    @apply shadow-iso-green hover:border-matrix-green/50;
+  }
+
+  /* Glassmorphism */
+  .glass {
+    @apply bg-white/5 backdrop-blur-lg border border-white/10;
+  }
+
+  /* Button Styles */
+  .btn-primary {
+    @apply bg-gradient-purple text-white
+           shadow-iso
+           rounded-lg px-6 py-3
+           transition-all duration-300
+           hover:shadow-iso-lg hover:scale-105
+           active:shadow-iso-sm active:scale-95
+           disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .btn-cyan {
+    @apply bg-gradient-cyan text-white shadow-iso-cyan;
+  }
+
+  .btn-green {
+    @apply bg-gradient-green text-white shadow-iso-green;
+  }
+
+  /* Input Styles */
+  .input-field {
+    @apply bg-matrix-dark/50 border-2 border-matrix-purple/30
+           rounded-lg px-4 py-3
+           text-gray-100 placeholder-gray-400
+           focus:outline-none focus:border-matrix-purple
+           transition-all duration-300;
+  }
+
+  /* Status Badges */
+  .status-badge {
+    @apply inline-flex items-center px-3 py-1 rounded-full text-sm font-medium;
+  }
+
+  .status-connected {
+    @apply bg-green-500/20 text-green-400 border border-green-500/30;
+  }
+
+  .status-disconnected {
+    @apply bg-red-500/20 text-red-400 border border-red-500/30;
+  }
+
+  .status-connecting {
+    @apply bg-yellow-500/20 text-yellow-400 border border-yellow-500/30;
+  }
+
+  /* Matrix Grid Background */
+  .matrix-bg {
+    background-image:
+      linear-gradient(rgba(139, 92, 246, 0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(139, 92, 246, 0.03) 1px, transparent 1px);
+    background-size: 50px 50px;
+  }
+
+  /* 3D Icon Container */
+  .icon-3d {
+    @apply relative
+           transform transition-transform duration-300
+           hover:scale-110 hover:rotate-6;
+  }
+
+  .icon-3d::after {
+    content: '';
+    @apply absolute -bottom-1 -right-1
+           w-full h-full
+           bg-matrix-purple/30
+           rounded-lg
+           -z-10
+           transform rotate-6;
+  }
+
+  /* Glow effects */
+  .glow-purple {
+    @apply shadow-glow-purple;
+  }
+
+  .glow-cyan {
+    @apply shadow-glow-cyan;
+  }
+
+  .glow-green {
+    @apply shadow-glow-green;
+  }
+
+  /* Animations */
+  .animate-float {
+    animation: float 3s ease-in-out infinite;
+  }
+
+  .animate-pulse-glow {
+    animation: pulse-glow 2s ease-in-out infinite;
+  }
+}
+
+@layer utilities {
+  /* Grid pattern for matrix effect */
+  .grid-pattern {
+    background-image: linear-gradient(to right, #8b5cf6 1px, transparent 1px),
+                      linear-gradient(to bottom, #8b5cf6 1px, transparent 1px);
+    background-size: 40px 40px;
+    opacity: 0.03;
+  }
+}

@@ -1,0 +1,118 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String    @id @default(uuid())
+  email     String    @unique
+  password  String
+  name      String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  sessions  Session[]
+}
+
+model Session {
+  id          String    @id @default(uuid())
+  sessionId   String    @unique
+  phoneNumber String?
+  status      String    @default("disconnected")
+  qrCode      String?
+  lastActive  DateTime  @default(now())
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  userId      String?
+  user        User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  files       File[]
+  messages    Message[]
+  contacts    Contact[]
+  botRules    BotRule[]
+
+  @@index([userId])
+}
+
+model Message {
+  id          String   @id @default(uuid())
+  sessionId   String
+  messageId   String   @unique
+  from        String
+  to          String
+  content     String?
+  messageType String
+  timestamp   DateTime
+  status      String   @default("pending")
+  createdAt   DateTime @default(now())
+  direction   String
+  session     Session  @relation(fields: [sessionId], references: [id])
+
+  @@index([sessionId])
+  @@index([messageId])
+}
+
+model File {
+  id           String    @id @default(uuid())
+  sessionId    String
+  fileName     String
+  filePath     String
+  fileSize     Int
+  fileType     String
+  mimeType     String
+  uploadStatus String    @default("pending")
+  processedAt  DateTime?
+  createdAt    DateTime  @default(now())
+  session      Session   @relation(fields: [sessionId], references: [id])
+
+  @@index([sessionId])
+}
+
+model Job {
+  id          String    @id @default(uuid())
+  jobId       String    @unique
+  type        String
+  status      String    @default("waiting")
+  data        Json?
+  result      Json?
+  error       String?
+  createdAt   DateTime  @default(now())
+  completedAt DateTime?
+
+  @@index([type])
+  @@index([status])
+}
+
+model Contact {
+  id          String    @id @default(uuid())
+  sessionId   String
+  name        String?
+  phoneNumber String
+  email       String?
+  tags        String[]
+  notes       String?
+  isBlocked   Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  session     Session   @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId])
+  @@index([phoneNumber])
+}
+
+model BotRule {
+  id          String    @id @default(uuid())
+  sessionId   String
+  name        String
+  keyword     String
+  response    String
+  isEnabled   Boolean   @default(true)
+  matchType   String    @default("contains") // contains, exact, regex
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  session     Session   @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId])
+}
