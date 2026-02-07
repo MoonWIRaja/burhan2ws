@@ -6,6 +6,7 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || process.env.API_URL || "https
 
 const nextConfig: NextConfig = {
   /* config options here */
+  output: "standalone",
   // Inject API URL as runtime config so it's available in client code
   env: {
     NEXT_PUBLIC_API_URL: API_URL,

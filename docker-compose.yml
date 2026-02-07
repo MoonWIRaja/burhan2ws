@@ -52,6 +52,7 @@ services:
       - NODE_ENV=production
       - DATA_PATH=/app/data
       - BETTER_AUTH_SECRET=${BETTER_AUTH_SECRET:-your-secret-key-here}
+      - BETTER_AUTH_URL=http://localhost:3001
       - FRONTEND_URL=http://localhost  # Pointing to Nginx
     volumes:
       - whatsapp_data:/app/data

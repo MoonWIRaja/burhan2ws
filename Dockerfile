@@ -18,11 +18,12 @@ COPY packages ./packages
 
 # Build packages first, then api
 RUN npm run build -w @whatsapp-blast/database || true
-RUN npm run build -w apps/api || true
+RUN npm run build -w @whatsapp-blast/whatsapp || true
+RUN npm run build -w @whatsapp-blast/api || true
 
 # Create data directory
 RUN mkdir -p /app/data
 
 EXPOSE 3001
 
-CMD ["npm", "run", "start", "-w", "apps/api"]
+CMD ["npm", "run", "start", "-w", "@whatsapp-blast/api"]
