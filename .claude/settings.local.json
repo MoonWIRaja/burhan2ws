@@ -1,0 +1,34 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(\"c:\\\\Users\\\\Moon\\\\Desktop\\\\burhan2ws\\\\apps\\\\web\\\\app\\\\api\\\\campaigns\\\\[id]\\\\start\\\\route.ts\")",
+      "Bash(node:*)",
+      "Bash(psql:*)",
+      "Bash(echo:*)",
+      "Bash(\"C:\\\\Users\\\\Moon\\\\Desktop\\\\burhan2ws\\\\apps\\\\web\\\\app\\\\api\\\\campaigns\\\\[id]\\\\route.ts\")",
+      "Bash(npx next build:*)",
+      "Bash(pg_isready:*)",
+      "Bash(cat:*)",
+      "Bash(netstat:*)",
+      "Bash(taskkill:*)",
+      "Bash(cmd:*)",
+      "Bash(timeout:*)",
+      "Bash(if not exist \"C:\\\\Users\\\\Moon\\\\Desktop\\\\burhan2ws\\\\_bmad-output\" mkdir \"C:\\\\Users\\\\Moon\\\\Desktop\\\\burhan2ws\\\\_bmad-output\")",
+      "Bash(npm ls:*)",
+      "Bash(npm install:*)",
+      "mcp__ide__getDiagnostics",
+      "Bash(tree:*)",
+      "Bash(claude-hooks/bmad-speak.sh:*)",
+      "Bash(if [ -f \"claude-hooks/bmad-speak.sh\" ])",
+      "Bash(then claude-hooks/bmad-speak.sh \"Barry\" \"Yeop, senang je! Nak satu port? Buang Express, guna Next.js API routes je. Frontend keluar dari port 3000, API pun kat port 3000 sama. Tak perlu fikir CORS, tak perlu dua deployment, ngarut lagu. Code yang senang itu code yang selamat.\")",
+      "Bash(else echo \"Hook script not found, showing direct output\")",
+      "Bash(fi:*)",
+      "Bash(then claude-hooks/bmad-speak.sh \"Amelia\" \"apps/api/index.ts:1 - Express entry point. apps/web/app/page.tsx:1 - Next.js entry point. Satu port bermakna memindahkan semua Express routes ke Next.js API routes di apps/web/app/api/*. Socket.io integration perlu di-refactor untuk Next.js environment.\")",
+      "Bash(npm run db:push:force:*)",
+      "Bash(npx tsx:*)"
+    ],
+    "additionalDirectories": [
+      "c:\\Users\\Moon\\Desktop\\burhan2ws\\apps\\web\\app\\api\\campaigns\\[id]\\start"
+    ]
+  }
+}

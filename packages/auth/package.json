@@ -1,0 +1,16 @@
+{
+  "name": "@whatsapp-blast/auth",
+  "version": "1.0.0",
+  "private": true,
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc"
+  },
+  "dependencies": {
+    "better-auth": "latest",
+    "@prisma/client": "latest"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.3"
+  }
+}

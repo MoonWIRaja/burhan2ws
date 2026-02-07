@@ -1,0 +1,21 @@
+import { NextRequest, NextResponse } from "next/server";
+
+const API_URL = process.env.API_URL || "http://localhost:3001";
+
+export async function GET(request: NextRequest) {
+  try {
+    // Get session ID from cookie
+    const sessionId = request.cookies.get("session_id")?.value;
+    
+    const response = await fetch(`${API_URL}/api/auth/qr`, {
+      headers: {
+        ...(sessionId && { "x-session-id": sessionId }),
+        Cookie: sessionId ? `session_id=${sessionId}` : "",
+      },
+    });
+    const data = await response.json();
+    return NextResponse.json(data);
+  } catch (error) {
+    return NextResponse.json({ status: "error", qr: null }, { status: 200 });
+  }
+}

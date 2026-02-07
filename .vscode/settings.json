@@ -1,0 +1,11 @@
+{
+  "css.customData": [],
+  "css.lint.unknownAtRules": "ignore",
+  "tailwindCSS.experimental.classRegex": [
+    ["cva\\(([^)]*)\\)", "[\"'`]([^\"'`]*)[\"'`]"]
+  ],
+  "files.associations": {
+    "*.css": "tailwindcss"
+  },
+  "claudeCode.selectedModel": "claude-opus-4-6"
+}

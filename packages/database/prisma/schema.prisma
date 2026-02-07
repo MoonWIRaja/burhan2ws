@@ -1,0 +1,78 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  name          String
+  role          String    @default("admin") // admin, agent
+  password      String    // Better Auth hash
+  createdAt     DateTime  @default(now())
+}
+
+model WhatsAppSession {
+  id            String   @id @default(cuid())
+  phoneNumber   String?
+  status        String   // connected, disconnected, connecting
+  qrCode        String?  // Temporary
+  authData      Json?    // Baileys credentials (encrypted)
+  isActive      Boolean  @default(true)
+  updatedAt     DateTime @updatedAt
+}
+
+model Contact {
+  id            String   @id @default(cuid())
+  name          String?
+  phoneNumber   String   @unique
+  tags          String[] // Array of tags
+  customData    Json?    // Flexible fields
+  lastMessageAt DateTime?
+  conversations Conversation[]
+  createdAt     DateTime @default(now())
+}
+
+model Conversation {
+  id          String    @id @default(cuid())
+  contactId   String
+  contact     Contact   @relation(fields: [contactId], references: [id])
+  messages    Message[]
+  isAIEnabled Boolean   @default(false)
+  aiContext   String?   // Summary untuk AI memory
+}
+
+model Message {
+  id          String   @id @default(cuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id])
+  content     String
+  fromMe      Boolean
+  timestamp   DateTime @default(now())
+  status      String   // sent, delivered, read, failed
+  mediaUrl    String?  // Kalau ada attachment
+}
+
+model Campaign {
+  id          String   @id @default(cuid())
+  name        String
+  message     String
+  recipients  Json     // Array of phone numbers
+  status      String   // draft, running, completed, paused
+  sentCount   Int      @default(0)
+  failedCount Int      @default(0)
+  scheduleAt  DateTime?
+  createdAt   DateTime @default(now())
+}
+
+model AIKnowledge {
+  id          String   @id @default(cuid())
+  name        String   // "Product FAQ", "Price List"
+  content     String   // Vectorized content untuk RAG
+  sourceType  String   // pdf, website, manual
+  isActive    Boolean  @default(true)
+}

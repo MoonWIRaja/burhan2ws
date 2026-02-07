@@ -1,0 +1,29 @@
+{
+  "name": "whatsapp-blast-ai",
+  "private": true,
+  "scripts": {
+    "build": "turbo build",
+    "dev": "turbo dev",
+    "start": "turbo start",
+    "lint": "turbo lint",
+    "format": "prettier --write \"**/*.{ts,tsx,md}\"",
+    "db:generate": "turbo db:generate",
+    "db:migrate": "turbo db:migrate",
+    "db:push": "turbo db:push",
+    "db:push:force": "npm run db:push:force --workspace=@whatsapp-blast/database",
+    "db:studio": "turbo db:studio",
+    "docker:up": "docker-compose up -d",
+    "docker:down": "docker-compose down",
+    "docker:logs": "docker-compose logs -f",
+    "reset:users": "npm run reset:users --workspace=apps/api"
+  },
+  "devDependencies": {
+    "prettier": "^3.2.5",
+    "turbo": "^2.8.3"
+  },
+  "packageManager": "npm@10.2.4",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ]
+}
