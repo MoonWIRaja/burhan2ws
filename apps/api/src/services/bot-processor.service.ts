@@ -25,6 +25,13 @@ export interface BotResponse {
   cost?: string;         // Calculated AI cost in RM (e.g., "0.0123")
 }
 
+interface AiModeResult {
+  response: string;
+  inputTokens?: number;
+  outputTokens?: number;
+  cost?: string;
+}
+
 // Normalize phone number (remove @s.whatsapp.net suffix and special chars)
 function normalizePhoneNumber(phone: string): string {
   if (!phone) return phone;
@@ -211,7 +218,7 @@ async function processNormalMode(userId: string, message: BotMessage): Promise<s
 }
 
 // AI mode: Call AI API with Knowledge Base context
-async function processAIMode(userId: string, message: BotMessage, activeModelId?: string | null): Promise<string | null> {
+async function processAIMode(userId: string, message: BotMessage, activeModelId?: string | null): Promise<AiModeResult | null> {
   try {
     // Get active AI model
     let model;
