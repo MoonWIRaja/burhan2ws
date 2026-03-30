@@ -2,7 +2,7 @@
 
 /**
  * Kill processes using backend and frontend ports
- * Backend port: from .env PORT (default 3001)
+ * Backend port: from .env BACKEND_PORT or PORT (default 3001)
  * Frontend port: from .env FRONTEND_PORT or default 3000
  */
 
@@ -36,7 +36,7 @@ function readEnv() {
 }
 
 const env = readEnv();
-const backendPort = env.PORT || "3001";
+const backendPort = env.BACKEND_PORT || env.PORT || "3001";
 const frontendPort = env.FRONTEND_PORT || "3000";
 
 const ports = [

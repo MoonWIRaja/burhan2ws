@@ -163,7 +163,9 @@ setMessageStorageSocketIO(io);
 export { io };
 
 // Start server
-const PORT = process.env.PORT || 3001;
+// In Pterodactyl the frontend and backend use different ports. Prefer BACKEND_PORT
+// for the API server, then fall back to PORT for local/dev compatibility.
+const PORT = process.env.BACKEND_PORT || process.env.PORT || 3001;
 
 // Increase timeout for large file uploads (30 minutes)
 httpServer.timeout = 30 * 60 * 1000;
