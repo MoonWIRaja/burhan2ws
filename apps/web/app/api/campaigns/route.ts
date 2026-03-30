@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const API_URL = process.env.API_URL || "http://localhost:3001";
+const API_URL = process.env.API_URL || "http://0.0.0.0:3001";
 
 function getSessionId(request: NextRequest): string | null {
   return request.cookies.get("session_id")?.value || null;
@@ -59,4 +59,3 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Failed to create campaign" }, { status: 500 });
   }
 }
-

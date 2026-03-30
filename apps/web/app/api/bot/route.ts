@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const API_URL = process.env.API_URL || "http://localhost:3001";
+const API_URL = process.env.API_URL || "http://0.0.0.0:3001";
 
 // Helper to get session ID from cookie
 function getSessionId(request: NextRequest): string {
