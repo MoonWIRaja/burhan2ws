@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const API_URL = process.env.API_URL || "http://0.0.0.0:3001";
+const API_URL = process.env.API_URL || "http://127.0.0.1:3001";
 
 // Simple ID generator
 function generateSessionId(): string {

@@ -32,7 +32,7 @@ function getSocketConfig() {
   if (typeof window === "undefined") {
     return {
       enabled: true,
-      url: "http://0.0.0.0:3001",
+      url: "http://127.0.0.1:3001",
       transports: ["websocket", "polling"] as const,
       upgrade: true,
     };
