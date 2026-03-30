@@ -21,31 +21,14 @@ interface WhatsAppPreviewProps {
 
 // Get API URL - same logic as login and blast pages
 function getApiUrl(): string {
-  if (typeof window === "undefined") return "http://localhost:3001";
+  if (typeof window === "undefined") return "http://127.0.0.1:3001";
 
   const envUrl = process.env.NEXT_PUBLIC_API_URL;
-  if (envUrl && envUrl !== "http://localhost:3001") {
+  if (envUrl) {
     return envUrl;
   }
 
-  // Fallback: construct from current location
-  const hostname = window.location.hostname;
-  let apiUrl = "http://localhost:3001";
-
-  if (hostname === "dev.owlscottage.com") {
-    apiUrl = "https://api-dev.owlscottage.com";
-  } else if (hostname === "owlscottage.com" || hostname === "www.owlscottage.com") {
-    apiUrl = "https://api.owlscottage.com";
-  } else if (hostname.endsWith(".owlscottage.com")) {
-    const parts = hostname.split(".");
-    if (parts[0] === "www") {
-      parts.shift();
-    }
-    parts[0] = "api";
-    apiUrl = `https://${parts.join(".")}`;
-  }
-
-  return apiUrl;
+  return window.location.origin;
 }
 
 // Helper to convert upload URL to accessible URL

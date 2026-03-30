@@ -24,19 +24,10 @@ export function useSocket() {
   useEffect(() => {
     // Create socket instance if not exists
     if (!socketInstance) {
-      // Determine Socket.io connection URL
-      // IMPORTANT: Socket MUST connect directly to the API server where Socket.io is running
-      // WebSocket connections DO NOT work through Next.js rewrites
-      let apiUrl = "";
-
-      if (typeof window !== "undefined") {
-        // Use NEXT_PUBLIC_API_URL from environment
-        // This is set by next.config.ts based on build-time env var
-        apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
-
-        // Log the values for debugging
-        console.log("[Socket] Connecting to API URL:", apiUrl, "from hostname:", window.location.hostname);
-      }
+      // Prefer an explicitly configured API origin; otherwise stay on the current origin.
+      const apiUrl = typeof window !== "undefined"
+        ? (process.env.NEXT_PUBLIC_API_URL || window.location.origin)
+        : "http://127.0.0.1:3001";
 
       // Get session ID from cookie to send with socket connection
       const sessionId = typeof document !== "undefined"

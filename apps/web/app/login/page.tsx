@@ -27,37 +27,19 @@ function getSessionId(): string | null {
 }
 
 // Get Socket.io server URL
-// Priority: NEXT_PUBLIC_API_URL env var -> construct from window.location -> localhost:3001
+// Priority: NEXT_PUBLIC_API_URL env var -> current site origin.
 function getSocketUrl(): string {
-  if (typeof window === "undefined") return "http://localhost:3001";
+  if (typeof window === "undefined") return "http://127.0.0.1:3001";
 
   // Try environment variable first (inlined at build time)
   const envUrl = process.env.NEXT_PUBLIC_API_URL;
-  if (envUrl && envUrl !== "http://localhost:3001") {
+  if (envUrl) {
     console.log("[Login] Using NEXT_PUBLIC_API_URL:", envUrl);
     return envUrl;
   }
 
-  // Fallback: construct from current location
-  // If on dev.owlscottage.com, use api-dev.owlscottage.com
-  const hostname = window.location.hostname;
-  let socketUrl = "http://localhost:3001";
-
-  if (hostname === "dev.owlscottage.com") {
-    socketUrl = "https://api-dev.owlscottage.com";
-  } else if (hostname === "owlscottage.com" || hostname === "www.owlscottage.com") {
-    socketUrl = "https://api.owlscottage.com";
-  } else if (hostname.endsWith(".owlscottage.com")) {
-    // Other subdomains: replace subdomain with api
-    const parts = hostname.split(".");
-    if (parts[0] === "www") {
-      parts.shift(); // Remove www
-    }
-    parts[0] = "api"; // Replace first subdomain with api
-    socketUrl = `https://${parts.join(".")}`;
-  }
-
-  console.log("[Login] Socket URL:", socketUrl, "(env var was:", envUrl + ")");
+  const socketUrl = window.location.origin;
+  console.log("[Login] Socket URL:", socketUrl, "(derived from current origin)");
   return socketUrl;
 }
 
@@ -217,8 +199,7 @@ export default function LoginPage() {
         method: "GET",
       }).catch(() => null);
 
-      if (!healthCheck || !healthCheck.ok) {
-        console.error("[Login] Health check failed");
+      if (!healthCheck) {
         setBackendReady(false);
         setStatus("backend_offline");
         setErrorMessage("Backend or database is temporarily unavailable.");
@@ -226,7 +207,13 @@ export default function LoginPage() {
       }
 
       const healthData = await healthCheck.json();
-      if (healthData?.status === "degraded" || healthData?.database?.available === false) {
+      if (
+        !healthCheck.ok ||
+        healthData?.backendUnavailable ||
+        healthData?.status === "degraded" ||
+        healthData?.status === "error" ||
+        healthData?.database?.available === false
+      ) {
         setBackendReady(false);
         setStatus("backend_offline");
         setErrorMessage(healthData?.database?.message || "Database is temporarily unavailable.");
