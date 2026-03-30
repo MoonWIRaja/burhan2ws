@@ -2,6 +2,20 @@ import { NextRequest, NextResponse } from "next/server";
 
 const API_URL = process.env.INTERNAL_API_URL || (process.env.BACKEND_PORT ? `http://127.0.0.1:${process.env.BACKEND_PORT}` : "http://127.0.0.1:3001");
 
+function isExpectedBackendDisconnect(error: unknown): boolean {
+  const message = String((error as any)?.message || error || "").toLowerCase();
+  const cause = String((error as any)?.cause?.code || "").toLowerCase();
+
+  return (
+    message.includes("fetch failed") ||
+    message.includes("econnrefused") ||
+    message.includes("econnreset") ||
+    cause.includes("econnrefused") ||
+    cause.includes("econnreset") ||
+    cause.includes("und_err_socket")
+  );
+}
+
 // Simple ID generator
 function generateSessionId(): string {
   return `${Date.now()}-${Math.random().toString(36).substring(2, 15)}`;
@@ -82,7 +96,9 @@ export async function GET(request: NextRequest) {
 
     return nextResponse;
   } catch (error) {
-    console.error("Session error:", error);
+    if (!isExpectedBackendDisconnect(error)) {
+      console.error("Session error:", error);
+    }
 
     // Even on error, ensure we have a session cookie
     const existingSession = request.cookies.get("session_id")?.value;

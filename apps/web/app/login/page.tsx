@@ -57,6 +57,8 @@ function getSocketConfig() {
   };
 }
 
+const QR_POLL_INTERVAL_MS = 5000;
+
 export default function LoginPage() {
   const [qrCode, setQrCode] = useState<string | null>(null);
   const [status, setStatus] = useState<"loading" | "waiting" | "connected" | "error" | "backend_offline">("loading");
@@ -383,7 +385,7 @@ export default function LoginPage() {
       if (data.status !== "connected" && shouldPollRef.current) {
         pollTimeoutRef.current = setTimeout(() => {
           pollForQR();
-        }, 2000);
+        }, QR_POLL_INTERVAL_MS);
       }
     } catch (error) {
       console.error("[Login] QR poll error:", error);
