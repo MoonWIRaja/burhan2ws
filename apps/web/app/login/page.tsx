@@ -28,19 +28,33 @@ function getSessionId(): string | null {
 
 // Get Socket.io server URL
 // Priority: NEXT_PUBLIC_API_URL env var -> current site origin.
-function getSocketUrl(): string {
-  if (typeof window === "undefined") return "http://127.0.0.1:3001";
+function getSocketConfig() {
+  if (typeof window === "undefined") {
+    return {
+      url: "http://0.0.0.0:3001",
+      transports: ["websocket", "polling"] as const,
+      upgrade: true,
+    };
+  }
 
   // Try environment variable first (inlined at build time)
   const envUrl = process.env.NEXT_PUBLIC_API_URL;
   if (envUrl) {
     console.log("[Login] Using NEXT_PUBLIC_API_URL:", envUrl);
-    return envUrl;
+    return {
+      url: envUrl,
+      transports: ["websocket", "polling"] as const,
+      upgrade: true,
+    };
   }
 
   const socketUrl = window.location.origin;
-  console.log("[Login] Socket URL:", socketUrl, "(derived from current origin)");
-  return socketUrl;
+  console.log("[Login] Socket URL:", socketUrl, "(same-origin polling mode)");
+  return {
+    url: socketUrl,
+    transports: ["polling"] as const,
+    upgrade: false,
+  };
 }
 
 export default function LoginPage() {
@@ -87,11 +101,12 @@ export default function LoginPage() {
   useEffect(() => {
     if (!sessionId || !backendReady) return; // Don't connect without a live backend
 
-    const socketUrl = getSocketUrl();
-    console.log("[Login] Connecting to Socket.io:", socketUrl, "with session:", sessionId);
+    const socketConfig = getSocketConfig();
+    console.log("[Login] Connecting to Socket.io:", socketConfig.url, "with session:", sessionId);
 
-    const socket = io(socketUrl, {
-      transports: ["websocket", "polling"],
+    const socket = io(socketConfig.url, {
+      transports: [...socketConfig.transports],
+      upgrade: socketConfig.upgrade,
       reconnection: true,
       reconnectionAttempts: 5,
       reconnectionDelay: 1000,

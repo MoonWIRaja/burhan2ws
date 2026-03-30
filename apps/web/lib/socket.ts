@@ -3,6 +3,34 @@ import { io, Socket } from "socket.io-client";
 
 let socketInstance: Socket | null = null;
 
+function getSocketConfig() {
+  if (typeof window === "undefined") {
+    return {
+      url: "http://0.0.0.0:3001",
+      transports: ["websocket", "polling"] as const,
+      upgrade: true,
+    };
+  }
+
+  const envUrl = process.env.NEXT_PUBLIC_API_URL;
+  if (envUrl) {
+    return {
+      url: envUrl,
+      transports: ["websocket", "polling"] as const,
+      upgrade: true,
+    };
+  }
+
+  // In Pterodactyl same-origin mode, Next handles the public web port while the
+  // Socket.io server lives behind internal rewrites. Polling is more reliable here
+  // than attempting a direct websocket upgrade against the Next port.
+  return {
+    url: window.location.origin,
+    transports: ["polling"] as const,
+    upgrade: false,
+  };
+}
+
 function isExpectedSocketError(error: any): boolean {
   const message = String(error?.message || error || "").toLowerCase();
   const description = String(error?.description || "").toLowerCase();
@@ -24,20 +52,18 @@ export function useSocket() {
   useEffect(() => {
     // Create socket instance if not exists
     if (!socketInstance) {
-      // Prefer an explicitly configured API origin; otherwise stay on the current origin.
-      const apiUrl = typeof window !== "undefined"
-        ? (process.env.NEXT_PUBLIC_API_URL || window.location.origin)
-        : "http://127.0.0.1:3001";
+      const socketConfig = getSocketConfig();
 
       // Get session ID from cookie to send with socket connection
       const sessionId = typeof document !== "undefined"
         ? document.cookie.split('; ').find(c => c.startsWith('session_id='))?.split('=')[1]
         : undefined;
 
-      console.log("[Socket] Connecting to:", apiUrl, "with sessionId:", sessionId?.substring(0, 8) + "...");
+      console.log("[Socket] Connecting to:", socketConfig.url, "with sessionId:", sessionId?.substring(0, 8) + "...");
 
-      socketInstance = io(apiUrl, {
-        transports: ["websocket", "polling"],
+      socketInstance = io(socketConfig.url, {
+        transports: [...socketConfig.transports],
+        upgrade: socketConfig.upgrade,
         withCredentials: true,
         reconnection: true,
         reconnectionAttempts: 5,
