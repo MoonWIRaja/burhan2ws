@@ -6,6 +6,7 @@ let socketInstance: Socket | null = null;
 function getSocketConfig() {
   if (typeof window === "undefined") {
     return {
+      enabled: true,
       url: "http://0.0.0.0:3001",
       transports: ["websocket", "polling"] as const,
       upgrade: true,
@@ -15,6 +16,7 @@ function getSocketConfig() {
   const envUrl = process.env.NEXT_PUBLIC_API_URL;
   if (envUrl) {
     return {
+      enabled: true,
       url: envUrl,
       transports: ["websocket", "polling"] as const,
       upgrade: true,
@@ -22,9 +24,10 @@ function getSocketConfig() {
   }
 
   // In Pterodactyl same-origin mode, Next handles the public web port while the
-  // Socket.io server lives behind internal rewrites. Polling is more reliable here
-  // than attempting a direct websocket upgrade against the Next port.
+  // Socket.io server is not directly exposed on the web port. Disable the socket
+  // entirely and let the app fall back to HTTP polling flows.
   return {
+    enabled: false,
     url: window.location.origin,
     transports: ["polling"] as const,
     upgrade: false,
@@ -53,6 +56,11 @@ export function useSocket() {
     // Create socket instance if not exists
     if (!socketInstance) {
       const socketConfig = getSocketConfig();
+      if (!socketConfig.enabled) {
+        setSocket(null);
+        setConnected(false);
+        return;
+      }
 
       // Get session ID from cookie to send with socket connection
       const sessionId = typeof document !== "undefined"
