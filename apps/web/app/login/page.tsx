@@ -31,7 +31,6 @@ function getSessionId(): string | null {
 function getSocketConfig() {
   if (typeof window === "undefined") {
     return {
-      enabled: true,
       url: "http://127.0.0.1:3001",
       transports: ["websocket", "polling"] as const,
       upgrade: true,
@@ -43,7 +42,6 @@ function getSocketConfig() {
   if (envUrl) {
     console.log("[Login] Using NEXT_PUBLIC_API_URL:", envUrl);
     return {
-      enabled: true,
       url: envUrl,
       transports: ["websocket", "polling"] as const,
       upgrade: true,
@@ -51,12 +49,11 @@ function getSocketConfig() {
   }
 
   const socketUrl = window.location.origin;
-  console.log("[Login] Socket disabled in same-origin Pterodactyl mode; using HTTP polling");
+  console.log("[Login] Socket URL:", socketUrl, "(same-origin fallback)");
   return {
-    enabled: false,
     url: socketUrl,
-    transports: ["polling"] as const,
-    upgrade: false,
+    transports: ["websocket", "polling"] as const,
+    upgrade: true,
   };
 }
 
@@ -106,9 +103,6 @@ export default function LoginPage() {
     if (!sessionId || !backendReady) return; // Don't connect without a live backend
 
     const socketConfig = getSocketConfig();
-    if (!socketConfig.enabled) {
-      return;
-    }
     console.log("[Login] Connecting to Socket.io:", socketConfig.url, "with session:", sessionId);
 
     const socket = io(socketConfig.url, {
