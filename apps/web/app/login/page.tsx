@@ -66,11 +66,12 @@ export default function LoginPage() {
   const [errorMessage, setErrorMessage] = useState<string>("");
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [backendReady, setBackendReady] = useState(false);
-  const [hasInitialized, setHasInitialized] = useState(false);
   const socketRef = useRef<Socket | null>(null);
   const pollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const shouldPollRef = useRef(true);
   const connectRequestedRef = useRef(false);
+  const autoInitDoneRef = useRef(false);
+  const initInFlightRef = useRef(false);
 
   useEffect(() => {
     // Get session ID from cookie (set by middleware)
@@ -186,7 +187,20 @@ export default function LoginPage() {
     };
   }, [backendReady, handleConnected, sessionId, stopPolling]);
 
-  const initializeConnection = useCallback(async () => {
+  const initializeConnection = useCallback(async (force = false) => {
+    if (initInFlightRef.current) {
+      return;
+    }
+
+    if (!force && autoInitDoneRef.current) {
+      return;
+    }
+
+    initInFlightRef.current = true;
+    if (!force) {
+      autoInitDoneRef.current = true;
+    }
+
     try {
       console.log("[Login] Initializing connection...");
       // Stop any existing polling and reset intent
@@ -303,6 +317,8 @@ export default function LoginPage() {
       setBackendReady(false);
       setStatus("backend_offline");
       setErrorMessage("Unable to connect to backend or database.");
+    } finally {
+      initInFlightRef.current = false;
     }
   }, [handleConnected]);
 
@@ -390,11 +406,8 @@ export default function LoginPage() {
 
   // Initialize connection once on mount
   useEffect(() => {
-    if (!hasInitialized) {
-      setHasInitialized(true);
-      initializeConnection();
-    }
-  }, [hasInitialized, initializeConnection]);
+    initializeConnection();
+  }, [initializeConnection]);
 
   return (
     <div className="min-h-screen w-full flex items-center justify-center bg-neutral-50 dark:bg-neutral-950 p-4">
@@ -433,7 +446,7 @@ export default function LoginPage() {
               <p className="text-red-500 font-bold mb-2">Server Offline</p>
               <p className="text-sm text-muted-foreground text-center mb-4">{errorMessage}</p>
               <button 
-                onClick={initializeConnection}
+                onClick={() => initializeConnection(true)}
                 className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-xl text-sm font-bold hover:opacity-90 transition-opacity"
               >
                 <IconRefresh size={16} />
@@ -457,7 +470,7 @@ export default function LoginPage() {
                     Open WhatsApp on your phone → Settings → Linked Devices → Link a Device
                   </p>
                   <button 
-                    onClick={initializeConnection}
+                    onClick={() => initializeConnection(true)}
                     className="flex items-center gap-2 px-4 py-2 text-muted-foreground hover:text-foreground transition-colors text-sm"
                   >
                     <IconRefresh size={16} />
@@ -495,7 +508,7 @@ export default function LoginPage() {
               <p className="text-orange-500 font-bold mb-2">Connection Error</p>
               <p className="text-sm text-muted-foreground text-center mb-4">Something went wrong. Please try again.</p>
               <button 
-                onClick={initializeConnection}
+                onClick={() => initializeConnection(true)}
                 className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-xl text-sm font-bold hover:opacity-90 transition-opacity"
               >
                 <IconRefresh size={16} />
