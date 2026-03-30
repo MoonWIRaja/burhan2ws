@@ -7,7 +7,7 @@
   "scripts": {
     "predev": "node scripts/kill-port.js",
     "dev": "tsx watch index.ts",
-    "prestart": "node scripts/kill-port.js",
+    "prestart": "node scripts/kill-port.js && npm run build",
     "start": "node dist/index.js",
     "build": "tsc",
     "reset:users": "tsx src/scripts/reset-users.ts"
