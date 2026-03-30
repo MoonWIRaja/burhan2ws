@@ -14,8 +14,20 @@ export async function GET(request: NextRequest) {
       },
     });
     const data = await response.json();
+    if (!response.ok) {
+      return NextResponse.json({
+        status: "db_unavailable",
+        qr: null,
+        backendUnavailable: true,
+        message: data?.message || "Backend unavailable",
+      });
+    }
     return NextResponse.json(data);
   } catch (error) {
-    return NextResponse.json({ status: "error", qr: null }, { status: 200 });
+    return NextResponse.json({
+      status: "backend_offline",
+      qr: null,
+      backendUnavailable: true,
+    }, { status: 200 });
   }
 }

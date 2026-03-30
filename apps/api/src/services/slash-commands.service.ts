@@ -1,5 +1,6 @@
 import { db, botFiles, whatsappSessions, conversations } from "@whatsapp-blast/database";
 import { eq, and } from "drizzle-orm";
+import { insertReturningOne } from "../utils/db-compat.js";
 
 export interface FileCommand {
   filename?: string; // Optional - set when loaded from file
@@ -267,15 +268,13 @@ async function executeTakeover(userId: string, senderJid: string, config: any): 
         .where(eq(conversations.id, existingConv.id));
     } else {
       // Create new conversation with takeover mode
-      const [newConv] = await db.insert(conversations)
-        .values({
-          userId,
-          phoneNumber: senderPhone,
-          takeoverMode: true,
-          takeoverExpiresAt: expiresAt,
-          takeoverAdminId: senderJid,
-        })
-        .returning();
+      await insertReturningOne(conversations, {
+        userId,
+        phoneNumber: senderPhone,
+        takeoverMode: true,
+        takeoverExpiresAt: expiresAt,
+        takeoverAdminId: senderJid,
+      });
     }
 
     console.log(`[Commands] ✅ TAKEOVER activated for ${senderPhone} until ${expiresAt.toISOString()}`);

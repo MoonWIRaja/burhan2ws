@@ -37,6 +37,28 @@ export async function GET(request: NextRequest) {
       credentials: "include", // Essential for CORS with cookies
     });
 
+    if (!response.ok) {
+      const fallbackResponse = NextResponse.json({
+        sessionId,
+        connected: false,
+        backendUnavailable: true,
+        error: "Backend unavailable, using local session",
+      });
+
+      if (sessionId) {
+        const isProduction = process.env.NODE_ENV === "production";
+        fallbackResponse.cookies.set("session_id", sessionId, {
+          httpOnly: false,
+          secure: isProduction,
+          sameSite: "lax",
+          maxAge: 30 * 24 * 60 * 60,
+          path: "/",
+        });
+      }
+
+      return fallbackResponse;
+    }
+
     const data = await response.json();
 
     // Create the response with session data
@@ -86,8 +108,13 @@ export async function GET(request: NextRequest) {
     }
 
     return NextResponse.json(
-      { error: "Failed to get session" },
-      { status: 500 }
+      {
+        sessionId: existingSession,
+        connected: false,
+        backendUnavailable: true,
+        error: "Backend unavailable, using existing local session",
+      },
+      { status: 200 }
     );
   }
 }

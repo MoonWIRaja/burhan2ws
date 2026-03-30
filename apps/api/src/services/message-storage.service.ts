@@ -1,6 +1,7 @@
 import { db, conversations, messages, contacts, normalizePhoneNumber, isValidPhoneNumber } from "@whatsapp-blast/database";
 import { eq, and, gt, lt } from "drizzle-orm";
 import { Server } from "socket.io";
+import { insertReturningOne, updateReturningOne } from "../utils/db-compat.js";
 
 // Global Socket.io instance - will be set from index.ts
 let io: Server | null = null;
@@ -98,34 +99,31 @@ export async function saveMessage(
       });
 
       // Create new conversation with contact info if found
-      const [newConv] = await db
-        .insert(conversations)
-        .values({
-          userId,
-          phoneNumber: normalizedPhone,
-          contactId: contact?.id || null,
-          contactName: contact?.name || null,  // Use saved contact name
-          status: "active",
-          lastMessageAt: new Date(timestamp),
-          lastMessagePreview: messageBody.substring(0, 100),
-          unreadCount: fromMe ? 0 : 1,  // Only increment unread for incoming
-          isAiEnabled: true, // Default AI ON for new conversations
-        })
-        .returning();
+      const newConv = await insertReturningOne(conversations, {
+        userId,
+        phoneNumber: normalizedPhone,
+        contactId: contact?.id || null,
+        contactName: contact?.name || null,  // Use saved contact name
+        status: "active",
+        lastMessageAt: new Date(timestamp),
+        lastMessagePreview: messageBody.substring(0, 100),
+        unreadCount: fromMe ? 0 : 1,  // Only increment unread for incoming
+        isAiEnabled: true, // Default AI ON for new conversations
+      });
       conversation = newConv;
       console.log(`[MessageStorage] ✅ Created new conversation: ${newConv.id}, contact: ${contact?.name || phoneNumber}`);
     } else {
       // Update existing conversation
-      const [updated] = await db
-        .update(conversations)
-        .set({
+      const updated = await updateReturningOne(
+        conversations,
+        eq(conversations.id, conversation.id),
+        {
           lastMessageAt: new Date(timestamp),
           lastMessagePreview: messageBody.substring(0, 100),
           unreadCount: fromMe ? 0 : (conversation.unreadCount || 0) + 1,  // Only increment for incoming
           updatedAt: new Date(),
-        })
-        .where(eq(conversations.id, conversation.id))
-        .returning();
+        }
+      );
       conversation = updated;
       console.log(`[MessageStorage] ✅ Updated conversation: ${conversation.id}`);
     }
@@ -173,19 +171,16 @@ export async function saveMessage(
     }
 
     // Save the message with CORRECT fromMe flag, isFromAi flag and waMessageId
-    const [newMessage] = await db
-      .insert(messages)
-      .values({
-        conversationId: conversation.id,
-        content: messageBody,
-        fromMe: fromMe,  // Use actual fromMe flag!
-        messageType: "text",
-        status: fromMe ? "sent" : "received",
-        timestamp: new Date(timestamp),
-        waMessageId: waMessageId || null,  // Store WhatsApp message ID for deduplication
-        isFromAi: isFromAi,  // Mark if this is an AI/bot reply
-      })
-      .returning();
+    const newMessage = await insertReturningOne(messages, {
+      conversationId: conversation.id,
+      content: messageBody,
+      fromMe: fromMe,  // Use actual fromMe flag!
+      messageType: "text",
+      status: fromMe ? "sent" : "received",
+      timestamp: new Date(timestamp),
+      waMessageId: waMessageId || null,  // Store WhatsApp message ID for deduplication
+      isFromAi: isFromAi,  // Mark if this is an AI/bot reply
+    });
 
     console.log(`[MessageStorage] ✅ Saved message: ${newMessage.id}, fromMe=${fromMe}, direction=${fromMe ? 'OUTGOING' : 'INCOMING'}, content="${messageBody}"`);
 
@@ -262,43 +257,37 @@ export async function saveOutgoingMessage(userId: string, toJid: string, message
     });
 
     if (!conversation) {
-      const [newConv] = await db
-        .insert(conversations)
-        .values({
-          userId,
-          phoneNumber,
-          status: "active",
-          lastMessageAt: new Date(timestamp),
-          lastMessagePreview: messageBody.substring(0, 100),
-          unreadCount: 0,
-        })
-        .returning();
+      const newConv = await insertReturningOne(conversations, {
+        userId,
+        phoneNumber,
+        status: "active",
+        lastMessageAt: new Date(timestamp),
+        lastMessagePreview: messageBody.substring(0, 100),
+        unreadCount: 0,
+      });
       conversation = newConv;
     } else {
-      const [updated] = await db
-        .update(conversations)
-        .set({
+      const updated = await updateReturningOne(
+        conversations,
+        eq(conversations.id, conversation.id),
+        {
           lastMessageAt: new Date(timestamp),
           lastMessagePreview: messageBody.substring(0, 100),
           updatedAt: new Date(),
-        })
-        .where(eq(conversations.id, conversation.id))
-        .returning();
+        }
+      );
       conversation = updated;
     }
 
     // Save the message
-    const [newMessage] = await db
-      .insert(messages)
-      .values({
-        conversationId: conversation.id,
-        content: messageBody,
-        fromMe: true,
-        messageType: "text",
-        status: "sent",
-        timestamp: new Date(timestamp),
-      })
-      .returning();
+    const newMessage = await insertReturningOne(messages, {
+      conversationId: conversation.id,
+      content: messageBody,
+      fromMe: true,
+      messageType: "text",
+      status: "sent",
+      timestamp: new Date(timestamp),
+    });
 
     console.log(`[MessageStorage] ✅ Saved outgoing message: ${newMessage.id}`);
 

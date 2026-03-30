@@ -1,7 +1,8 @@
 import { Router } from "express";
 import { db, conversations, messages, contacts, normalizePhoneNumber, isValidPhoneNumber } from "@whatsapp-blast/database";
-import { eq, and, ilike, or, desc, count, sql } from "drizzle-orm";
+import { eq, and, or, desc, count, sql } from "drizzle-orm";
 import { getSessionId, getRealUserId } from "../utils/get-user.js";
+import { ciLike, insertReturningOne, updateReturningOne } from "../utils/db-compat.js";
 
 const router = Router();
 
@@ -26,8 +27,8 @@ router.get("/", async (req, res) => {
         status ? eq(conversations.status, status as string) : undefined,
         search
           ? or(
-              ilike(conversations.contactName, "%" + search + "%"),
-              ilike(conversations.phoneNumber, "%" + search + "%")
+              ciLike(conversations.contactName, String(search)),
+              ciLike(conversations.phoneNumber, String(search))
             )
           : undefined
       ),
@@ -95,14 +96,14 @@ router.post("/", async (req, res) => {
     if (existing) {
       // If contactName is provided and different, update the conversation
       if (contactName && existing.contactName !== contactName) {
-        const [updated] = await db
-          .update(conversations)
-          .set({
+        const updated = await updateReturningOne(
+          conversations,
+          eq(conversations.id, existing.id),
+          {
             contactName: contactName,
             updatedAt: new Date(),
-          })
-          .where(eq(conversations.id, existing.id))
-          .returning();
+          }
+        );
         return res.json(updated);
       }
       return res.json(existing);
@@ -120,31 +121,25 @@ router.post("/", async (req, res) => {
 
     // Create contact if name provided and contact doesn't exist
     if (contactName && !contact) {
-      [contact] = await db
-        .insert(contacts)
-        .values({
-          userId,
-          phoneNumber: normalizedPhone,
-          name: contactName,
-        })
-        .returning();
+      contact = await insertReturningOne(contacts, {
+        userId,
+        phoneNumber: normalizedPhone,
+        name: contactName,
+      });
     }
 
     // Create new conversation
-    const [newConversation] = await db
-      .insert(conversations)
-      .values({
-        userId,
-        phoneNumber: normalizedPhone,
-        contactId: contact?.id || null,
-        contactName: contact?.name || contactName || null,
-        lastMessagePreview: null,
-        lastMessageAt: null,
-        unreadCount: 0,
-        isAiEnabled: false,
-        status: "active",
-      })
-      .returning();
+    const newConversation = await insertReturningOne(conversations, {
+      userId,
+      phoneNumber: normalizedPhone,
+      contactId: contact?.id || null,
+      contactName: contact?.name || contactName || null,
+      lastMessagePreview: null,
+      lastMessageAt: null,
+      unreadCount: 0,
+      isAiEnabled: false,
+      status: "active",
+    });
 
     res.json(newConversation);
   } catch (error) {
@@ -252,14 +247,14 @@ router.patch("/:id/ai", async (req, res) => {
 
     const { enabled } = req.body;
 
-    const [updated] = await db
-      .update(conversations)
-      .set({
+    const updated = await updateReturningOne(
+      conversations,
+      and(eq(conversations.id, req.params.id), eq(conversations.userId, userId)),
+      {
         isAiEnabled: enabled,
         updatedAt: new Date(),
-      })
-      .where(and(eq(conversations.id, req.params.id), eq(conversations.userId, userId)))
-      .returning();
+      }
+    );
 
     if (!updated) {
       return res.status(404).json({ error: "Conversation not found" });
@@ -281,14 +276,14 @@ router.post("/:id/takeover", async (req, res) => {
     }
     const userId = await getRealUserId(sessionId);
 
-    const [updated] = await db
-      .update(conversations)
-      .set({
+    const updated = await updateReturningOne(
+      conversations,
+      and(eq(conversations.id, req.params.id), eq(conversations.userId, userId)),
+      {
         isAiEnabled: false,
         updatedAt: new Date(),
-      })
-      .where(and(eq(conversations.id, req.params.id), eq(conversations.userId, userId)))
-      .returning();
+      }
+    );
 
     if (!updated) {
       return res.status(404).json({ error: "Conversation not found" });
@@ -310,14 +305,14 @@ router.patch("/:id/read", async (req, res) => {
     }
     const userId = await getRealUserId(sessionId);
 
-    const [updated] = await db
-      .update(conversations)
-      .set({
+    const updated = await updateReturningOne(
+      conversations,
+      and(eq(conversations.id, req.params.id), eq(conversations.userId, userId)),
+      {
         unreadCount: 0,
         updatedAt: new Date(),
-      })
-      .where(and(eq(conversations.id, req.params.id), eq(conversations.userId, userId)))
-      .returning();
+      }
+    );
 
     if (!updated) {
       return res.status(404).json({ error: "Conversation not found" });
@@ -363,35 +358,32 @@ router.patch("/:id", async (req, res) => {
 
       // Update or create contact
       if (contact) {
-        [contact] = await db
-          .update(contacts)
-          .set({
+        contact = await updateReturningOne(
+          contacts,
+          eq(contacts.id, contact.id),
+          {
             name: contactName,
             updatedAt: new Date(),
-          })
-          .where(eq(contacts.id, contact.id))
-          .returning();
+          }
+        );
       } else {
-        [contact] = await db
-          .insert(contacts)
-          .values({
-            userId,
-            phoneNumber: conversation.phoneNumber,
-            name: contactName,
-          })
-          .returning();
+        contact = await insertReturningOne(contacts, {
+          userId,
+          phoneNumber: conversation.phoneNumber,
+          name: contactName,
+        });
       }
 
       // Update conversation with contact info
-      const [updated] = await db
-        .update(conversations)
-        .set({
+      const updated = await updateReturningOne(
+        conversations,
+        and(eq(conversations.id, req.params.id), eq(conversations.userId, userId)),
+        {
           contactId: contact.id,
           contactName: contactName,
           updatedAt: new Date(),
-        })
-        .where(and(eq(conversations.id, req.params.id), eq(conversations.userId, userId)))
-        .returning();
+        }
+      );
 
       return res.json(updated);
     }

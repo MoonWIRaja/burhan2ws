@@ -3,6 +3,20 @@ import { io, Socket } from "socket.io-client";
 
 let socketInstance: Socket | null = null;
 
+function isExpectedSocketError(error: any): boolean {
+  const message = String(error?.message || error || "").toLowerCase();
+  const description = String(error?.description || "").toLowerCase();
+
+  return (
+    message.includes("websocket error") ||
+    message.includes("xhr poll error") ||
+    message.includes("fetch failed") ||
+    message.includes("timeout") ||
+    description.includes("ecconnrefused") ||
+    description.includes("fetch failed")
+  );
+}
+
 export function useSocket() {
   const [socket, setSocket] = useState<Socket | null>(null);
   const [connected, setConnected] = useState(false);
@@ -58,6 +72,10 @@ export function useSocket() {
     });
 
     socketInstance.on("connect_error", (error) => {
+      if (isExpectedSocketError(error)) {
+        console.warn("[Socket] Backend not ready for realtime connection yet");
+        return;
+      }
       console.error("[Socket] Connection error:", error);
     });
 

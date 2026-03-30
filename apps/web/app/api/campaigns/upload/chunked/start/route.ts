@@ -4,32 +4,26 @@ const API_URL = process.env.API_URL || "http://localhost:3001";
 
 export async function POST(request: NextRequest) {
   try {
-    // Get session ID from cookie
     const sessionId = request.cookies.get("session_id")?.value;
-    
-    const response = await fetch(`${API_URL}/api/auth/connect`, {
+    const body = await request.text();
+
+    const response = await fetch(`${API_URL}/api/campaigns/upload/chunked/start`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         ...(sessionId && { "x-session-id": sessionId }),
         Cookie: sessionId ? `session_id=${sessionId}` : "",
       },
+      body,
     });
+
     const data = await response.json();
-    if (!response.ok) {
-      return NextResponse.json({
-        status: "db_unavailable",
-        qr: null,
-        backendUnavailable: true,
-        message: data?.message || "Backend unavailable",
-      });
-    }
-    return NextResponse.json(data);
+    return NextResponse.json(data, { status: response.status });
   } catch (error) {
-    return NextResponse.json({
-      error: "Failed to connect",
-      status: "backend_offline",
-      backendUnavailable: true,
-    });
+    console.error("[ChunkedUploadProxy] Start error:", error);
+    return NextResponse.json(
+      { error: "Failed to start upload" },
+      { status: 502 }
+    );
   }
 }

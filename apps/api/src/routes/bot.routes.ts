@@ -5,6 +5,7 @@ import multer from "multer";
 import path from "path";
 import fs from "fs/promises";
 import { getSessionId, getRealUserId } from "../utils/get-user.js";
+import { deleteReturningOne, insertReturningOne, updateReturningOne } from "../utils/db-compat.js";
 
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage() });
@@ -16,15 +17,12 @@ async function ensureUserExists(sessionId: string) {
   });
 
   if (!user) {
-    const [newUser] = await db
-      .insert(users)
-      .values({
-        id: sessionId,
-        name: `User ${sessionId.slice(0, 8)}`,
-        email: `${sessionId}@whatsapp.local`,
-        dataPath: `/data/${sessionId}`,
-      })
-      .returning();
+    const newUser = await insertReturningOne(users, {
+      id: sessionId,
+      name: `User ${sessionId.slice(0, 8)}`,
+      email: `${sessionId}@whatsapp.local`,
+      dataPath: `/data/${sessionId}`,
+    });
     user = newUser;
   }
 
@@ -444,17 +442,14 @@ router.post("/start", async (req, res) => {
 
     if (!config) {
       // Create default config
-      const [newConfig] = await db
-        .insert(botConfig)
-        .values({ userId, isEnabled: true, status: "running" })
-        .returning();
+      const newConfig = await insertReturningOne(botConfig, { userId, isEnabled: true, status: "running" });
       config = newConfig;
     } else {
-      const [updated] = await db
-        .update(botConfig)
-        .set({ isEnabled: true, status: "running", updatedAt: new Date() })
-        .where(eq(botConfig.userId, userId))
-        .returning();
+      const updated = await updateReturningOne(botConfig, eq(botConfig.userId, userId), {
+        isEnabled: true,
+        status: "running",
+        updatedAt: new Date(),
+      });
       config = updated;
     }
 
@@ -596,19 +591,16 @@ router.post("/models", async (req, res) => {
     else if (apiEndpoint.includes("anthropic.com")) provider = "anthropic";
     else if (apiEndpoint.includes("google")) provider = "google";
 
-    const [model] = await db
-      .insert(aiModels)
-      .values({
-        userId,
-        alias,
-        modelName,
-        apiEndpoint,
-        apiKey,
-        systemPrompt,
-        provider,
-        testStatus: "untested",
-      })
-      .returning();
+    const model = await insertReturningOne(aiModels, {
+      userId,
+      alias,
+      modelName,
+      apiEndpoint,
+      apiKey,
+      systemPrompt,
+      provider,
+      testStatus: "untested",
+    });
 
     res.status(201).json({
       ...model,
@@ -823,11 +815,11 @@ router.patch("/models/:id", async (req, res) => {
     }
     if (systemPrompt !== undefined) updateData.systemPrompt = systemPrompt;
 
-    const [updated] = await db
-      .update(aiModels)
-      .set(updateData)
-      .where(and(eq(aiModels.id, req.params.id), eq(aiModels.userId, userId)))
-      .returning();
+    const updated = await updateReturningOne(
+      aiModels,
+      and(eq(aiModels.id, req.params.id), eq(aiModels.userId, userId)),
+      updateData
+    );
 
     res.json({
       ...updated,
@@ -853,10 +845,10 @@ router.delete("/models/:id", async (req, res) => {
       return res.status(401).json({ error: "Unauthorized" });
     }
 
-    const [deleted] = await db
-      .delete(aiModels)
-      .where(and(eq(aiModels.id, req.params.id), eq(aiModels.userId, userId)))
-      .returning();
+    const deleted = await deleteReturningOne(
+      aiModels,
+      and(eq(aiModels.id, req.params.id), eq(aiModels.userId, userId))
+    );
 
     if (!deleted) {
       return res.status(404).json({ error: "Model not found" });
@@ -929,16 +921,13 @@ router.post("/knowledge", upload.single("file"), async (req, res) => {
     // Extract content (basic - just store text for now)
     const content = req.file.buffer.toString("utf-8");
 
-    const [knowledge] = await db
-      .insert(knowledgeBase)
-      .values({
-        userId,
-        name: req.file.originalname,
-        fileType,
-        filePath: `/data/${userId}/knowledge/${filename}`,
-        content: content.substring(0, 50000), // Limit content size
-      })
-      .returning();
+    const knowledge = await insertReturningOne(knowledgeBase, {
+      userId,
+      name: req.file.originalname,
+      fileType,
+      filePath: `/data/${userId}/knowledge/${filename}`,
+      content: content.substring(0, 50000), // Limit content size
+    });
 
     res.status(201).json(knowledge);
   } catch (error) {
@@ -1054,20 +1043,13 @@ router.patch("/config", async (req, res) => {
     if (botMode !== undefined) updateData.botMode = botMode;
 
     if (!config) {
-      const [newConfig] = await db
-        .insert(botConfig)
-        .values({
-          userId,
-          ...updateData,
-        })
-        .returning();
+      const newConfig = await insertReturningOne(botConfig, {
+        userId,
+        ...updateData,
+      });
       config = newConfig;
     } else {
-      const [updated] = await db
-        .update(botConfig)
-        .set(updateData)
-        .where(eq(botConfig.userId, userId))
-        .returning();
+      const updated = await updateReturningOne(botConfig, eq(botConfig.userId, userId), updateData);
       config = updated;
     }
 
@@ -1372,19 +1354,16 @@ router.post("/files/folder", async (req, res) => {
       return res.status(400).json({ error: "Folder already exists" });
     }
 
-    const [folder] = await db
-      .insert(botFiles)
-      .values({
-        userId,
-        filename: name,
-        folder: folderName, // Legacy column
-        filePath: fullPath,
-        parentPath: parentPath as string,
-        isDirectory: true,
-        fileSize: 0,
-        botMode,
-      })
-      .returning();
+    const folder = await insertReturningOne(botFiles, {
+      userId,
+      filename: name,
+      folder: folderName, // Legacy column
+      filePath: fullPath,
+      parentPath: parentPath as string,
+      isDirectory: true,
+      fileSize: 0,
+      botMode,
+    });
 
     res.status(201).json(folder);
   } catch (error) {
@@ -1436,21 +1415,18 @@ router.post("/files/file", async (req, res) => {
       return res.status(400).json({ error: "File already exists" });
     }
 
-    const [file] = await db
-      .insert(botFiles)
-      .values({
-        userId,
-        filename: name,
-        folder: folderName, // Legacy column
-        filePath: fullPath,
-        parentPath: parentPath as string,
-        isDirectory: false,
-        fileSize: Buffer.byteLength(content, "utf-8"),
-        content,
-        mimeType: ext === "json" ? "application/json" : ext === "js" ? "application/javascript" : "text/plain",
-        botMode,
-      })
-      .returning();
+    const file = await insertReturningOne(botFiles, {
+      userId,
+      filename: name,
+      folder: folderName, // Legacy column
+      filePath: fullPath,
+      parentPath: parentPath as string,
+      isDirectory: false,
+      fileSize: Buffer.byteLength(content, "utf-8"),
+      content,
+      mimeType: ext === "json" ? "application/json" : ext === "js" ? "application/javascript" : "text/plain",
+      botMode,
+    });
 
     res.status(201).json(file);
   } catch (error) {
@@ -1516,14 +1492,14 @@ router.patch("/files/:id", async (req, res) => {
       updateData.filename = filename;
     }
 
-    const [updated] = await db
-      .update(botFiles)
-      .set(updateData)
-      .where(and(
+    const updated = await updateReturningOne(
+      botFiles,
+      and(
         eq(botFiles.id, req.params.id),
         eq(botFiles.userId, userId)
-      ))
-      .returning();
+      ),
+      updateData
+    );
 
     if (!updated) {
       return res.status(404).json({ error: "File not found" });
@@ -1727,22 +1703,19 @@ router.post("/commands", async (req, res) => {
       return res.status(400).json({ error: "Command already exists" });
     }
 
-    const [newCommand] = await db
-      .insert(botCommands)
-      .values({
-        sessionId: session.id,
-        name,
-        command,
-        alias: alias || [],
-        description,
-        action,
-        adminOnly: adminOnly !== undefined ? adminOnly : true,
-        hiddenFromContact: hiddenFromContact !== undefined ? hiddenFromContact : true,
-        enabled: enabled !== undefined ? enabled : true,
-        config: config || {},
-        isDefault: false,
-      })
-      .returning();
+    const newCommand = await insertReturningOne(botCommands, {
+      sessionId: session.id,
+      name,
+      command,
+      alias: alias || [],
+      description,
+      action,
+      adminOnly: adminOnly !== undefined ? adminOnly : true,
+      hiddenFromContact: hiddenFromContact !== undefined ? hiddenFromContact : true,
+      enabled: enabled !== undefined ? enabled : true,
+      config: config || {},
+      isDefault: false,
+    });
 
     res.status(201).json(newCommand);
   } catch (error) {
@@ -1834,11 +1807,7 @@ router.patch("/commands/:id", async (req, res) => {
     if (enabled !== undefined) updateData.enabled = enabled;
     if (config !== undefined) updateData.config = config;
 
-    const [updated] = await db
-      .update(botCommands)
-      .set(updateData)
-      .where(eq(botCommands.id, req.params.id))
-      .returning();
+    const updated = await updateReturningOne(botCommands, eq(botCommands.id, req.params.id), updateData);
 
     res.json(updated);
   } catch (error) {
@@ -1875,11 +1844,10 @@ router.post("/commands/:id/toggle", async (req, res) => {
       return res.status(404).json({ error: "Command not found" });
     }
 
-    const [updated] = await db
-      .update(botCommands)
-      .set({ enabled: !existing.enabled, updatedAt: new Date() })
-      .where(eq(botCommands.id, req.params.id))
-      .returning();
+    const updated = await updateReturningOne(botCommands, eq(botCommands.id, req.params.id), {
+      enabled: !existing.enabled,
+      updatedAt: new Date(),
+    });
 
     res.json(updated);
   } catch (error) {
@@ -2020,7 +1988,7 @@ router.post("/files/resync", async (req, res) => {
           ? file.parentPath === "/" ? "" : file.parentPath.replace(/^\//, "").replace(/\/$/, "")
           : file.parentPath === "/" ? "" : file.parentPath.replace(/^\//, "").replace(/\/$/, "");
 
-        const [newFile] = await db.insert(botFiles).values({
+        const newFile = await insertReturningOne(botFiles, {
           userId,
           filename: file.filename,
           folder,
@@ -2031,7 +1999,7 @@ router.post("/files/resync", async (req, res) => {
           content: file.content || null,
           mimeType: file.mimeType || null,
           botMode: mode,
-        }).returning();
+        });
 
         addedFiles.push(newFile);
       }

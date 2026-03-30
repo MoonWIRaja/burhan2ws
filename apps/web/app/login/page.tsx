@@ -5,6 +5,20 @@ import { IconRefresh, IconCheck, IconX, IconPlugConnected } from "@tabler/icons-
 import Link from "next/link";
 import { io, Socket } from "socket.io-client";
 
+function isExpectedSocketError(error: any): boolean {
+  const message = String(error?.message || error || "").toLowerCase();
+  const description = String(error?.description || "").toLowerCase();
+
+  return (
+    message.includes("websocket error") ||
+    message.includes("xhr poll error") ||
+    message.includes("fetch failed") ||
+    message.includes("timeout") ||
+    description.includes("ecconnrefused") ||
+    description.includes("fetch failed")
+  );
+}
+
 // Helper to get session ID from cookie
 function getSessionId(): string | null {
   if (typeof document === "undefined") return null;
@@ -52,6 +66,7 @@ export default function LoginPage() {
   const [status, setStatus] = useState<"loading" | "waiting" | "connected" | "error" | "backend_offline">("loading");
   const [errorMessage, setErrorMessage] = useState<string>("");
   const [sessionId, setSessionId] = useState<string | null>(null);
+  const [backendReady, setBackendReady] = useState(false);
   const [hasInitialized, setHasInitialized] = useState(false);
   const socketRef = useRef<Socket | null>(null);
   const pollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -88,7 +103,7 @@ export default function LoginPage() {
   // Socket.io connection for real-time WhatsApp status updates
   // IMPORTANT: Only connect AFTER session is created
   useEffect(() => {
-    if (!sessionId) return; // Don't connect without session
+    if (!sessionId || !backendReady) return; // Don't connect without a live backend
 
     const socketUrl = getSocketUrl();
     console.log("[Login] Connecting to Socket.io:", socketUrl, "with session:", sessionId);
@@ -154,6 +169,10 @@ export default function LoginPage() {
     });
 
     socket.on("connect_error", (error) => {
+      if (isExpectedSocketError(error)) {
+        console.warn("[Login] Realtime channel unavailable, continuing without socket for now");
+        return;
+      }
       console.error("[Login] Socket.io connection error:", error);
     });
 
@@ -162,7 +181,7 @@ export default function LoginPage() {
       socket.disconnect();
       socketRef.current = null;
     };
-  }, [handleConnected, sessionId, stopPolling]);
+  }, [backendReady, handleConnected, sessionId, stopPolling]);
 
   const initializeConnection = useCallback(async () => {
     try {
@@ -191,6 +210,7 @@ export default function LoginPage() {
 
       // Update local session ID state
       setSessionId(sessionData.sessionId);
+      setBackendReady(!sessionData.backendUnavailable);
 
       // Use Next.js API proxy (same domain, no CORS issues)
       const healthCheck = await fetch("/api/health", {
@@ -199,10 +219,21 @@ export default function LoginPage() {
 
       if (!healthCheck || !healthCheck.ok) {
         console.error("[Login] Health check failed");
+        setBackendReady(false);
         setStatus("backend_offline");
-        setErrorMessage("Backend server is offline. Please run 'npm run dev' in terminal.");
+        setErrorMessage("Backend or database is temporarily unavailable.");
         return;
       }
+
+      const healthData = await healthCheck.json();
+      if (healthData?.status === "degraded" || healthData?.database?.available === false) {
+        setBackendReady(false);
+        setStatus("backend_offline");
+        setErrorMessage(healthData?.database?.message || "Database is temporarily unavailable.");
+        return;
+      }
+
+      setBackendReady(true);
 
       // Check if already connected
       const statusCheck = await fetch("/api/auth/status", {
@@ -211,6 +242,13 @@ export default function LoginPage() {
       const statusData = await statusCheck.json();
 
       console.log("[Login] Status check:", statusData);
+
+      if (statusData.backendUnavailable || statusData.status === "db_unavailable") {
+        setBackendReady(false);
+        setStatus("backend_offline");
+        setErrorMessage(statusData.message || "Database is temporarily unavailable.");
+        return;
+      }
 
       if (statusData.connected) {
         console.log("[Login] Already connected, redirecting...");
@@ -230,6 +268,13 @@ export default function LoginPage() {
       const data = await response.json();
       console.log("[Login] Connect response:", { hasQR: !!data.qr, status: data.status, qrLength: data.qr?.length });
 
+      if (data.backendUnavailable || data.status === "db_unavailable" || data.status === "backend_offline") {
+        setBackendReady(false);
+        setStatus("backend_offline");
+        setErrorMessage(data.message || "Database is temporarily unavailable.");
+        return;
+      }
+
       if (data.qr) {
         setQrCode(data.qr);
         setStatus("waiting");
@@ -247,8 +292,9 @@ export default function LoginPage() {
       }
     } catch (error: any) {
       console.error("[Login] Failed to connect:", error);
+      setBackendReady(false);
       setStatus("backend_offline");
-      setErrorMessage("Unable to connect to backend. Make sure the server is running.");
+      setErrorMessage("Unable to connect to backend or database.");
     }
   }, [handleConnected]);
 
@@ -270,6 +316,14 @@ export default function LoginPage() {
 
       console.log("[Login] QR poll response:", { hasQR: !!data.qr, status: data.status });
 
+      if (data.backendUnavailable || data.status === "db_unavailable" || data.status === "backend_offline") {
+        setBackendReady(false);
+        setStatus("backend_offline");
+        setErrorMessage(data.message || "Database is temporarily unavailable.");
+        stopPolling();
+        return;
+      }
+
       if (data.qr) {
         setQrCode(data.qr);
         setStatus("waiting");
@@ -288,6 +342,14 @@ export default function LoginPage() {
           credentials: "include",
         }).then(res => res.json()).then(connectData => {
           console.log("[Login] Connect request response:", connectData);
+          if (connectData.backendUnavailable || connectData.status === "db_unavailable" || connectData.status === "backend_offline") {
+            setBackendReady(false);
+            setStatus("backend_offline");
+            setErrorMessage(connectData.message || "Database is temporarily unavailable.");
+            stopPolling();
+            connectRequestedRef.current = false;
+            return;
+          }
           if (connectData.qr) {
             setQrCode(connectData.qr);
             setStatus("waiting");

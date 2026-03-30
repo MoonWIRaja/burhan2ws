@@ -5,6 +5,7 @@ import { eq } from "drizzle-orm";
 import multer from "multer";
 import path from "path";
 import fs from "fs/promises";
+import { updateReturningOne } from "../utils/db-compat.js";
 
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage() });
@@ -132,15 +133,15 @@ router.patch("/", async (req, res) => {
 
     // CRITICAL: Update users table (phone-based), not whatsappSessions
     // This ensures profile data persists across logins/sessions
-    const [updated] = await db
-      .update(users)
-      .set({
+    const updated = await updateReturningOne(
+      users,
+      eq(users.id, session.userId),
+      {
         displayName,
         about,
         updatedAt: new Date(),
-      })
-      .where(eq(users.id, session.userId)) // Use phone-based userId
-      .returning();
+      }
+    );
 
     if (!updated) {
       return res.status(404).json({ error: "User not found" });

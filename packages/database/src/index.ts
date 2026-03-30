@@ -1,26 +1,27 @@
-import dotenv from "dotenv";
-import path from "path";
-import { fileURLToPath } from "url";
-
-// Load .env from root directory (monorepo root)
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-dotenv.config({ path: path.resolve(__dirname, "../../../.env") });
-
-import { drizzle } from "drizzle-orm/postgres-js";
+import { drizzle as drizzlePostgres } from "drizzle-orm/postgres-js";
+import { drizzle as drizzleMysql } from "drizzle-orm/mysql2";
 import postgres from "postgres";
+import mysql from "mysql2/promise";
 import * as schema from "./schema/index.js";
+import { databaseUrl, dbProvider } from "./config.js";
 
-// Create connection
-const connectionString = process.env.DATABASE_URL || "postgresql://localhost:5432/whatsapp_blast";
+console.log("📦 Database provider:", dbProvider);
+console.log("📦 Database connecting to:", databaseUrl.replace(/:[^:@]+@/, ":****@"));
 
-console.log("📦 Database connecting to:", connectionString.replace(/:[^:@]+@/, ":****@"));
+let db: any;
+let migrationClient: any;
 
-// For query purposes
-const queryClient = postgres(connectionString);
-export const db = drizzle(queryClient, { schema });
+if (dbProvider === "mysql") {
+  const queryClient = mysql.createPool(databaseUrl);
+  db = drizzleMysql(queryClient, { schema, mode: "default" });
+  migrationClient = queryClient;
+} else {
+  const queryClient = postgres(databaseUrl);
+  db = drizzlePostgres(queryClient, { schema });
+  migrationClient = postgres(databaseUrl, { max: 1 });
+}
 
-// For migrations (use a separate client)
-export const migrationClient = postgres(connectionString, { max: 1 });
+export { db, migrationClient, dbProvider, databaseUrl };
 
 // Export schema for external use
 export * from "./schema/index.js";

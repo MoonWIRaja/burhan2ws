@@ -29,19 +29,25 @@ import { startScheduler } from "./src/services/blast.service.js";
 import { setSocketIO as setMessageStorageSocketIO } from "./src/services/message-storage.service.js";
 import { db, whatsappSessions } from "@whatsapp-blast/database";
 import { eq } from "drizzle-orm";
+import { updateReturningMany } from "./src/utils/db-compat.js";
+import { handleDbError } from "./src/utils/db-errors.js";
+import { getDbStatusMessage, isDbAvailable } from "./src/utils/db-state.js";
 
 // Startup cleanup: Mark all sessions as disconnected (server restart clears in-memory instances)
 async function cleanupOldSessions() {
   try {
-    const result = await db
-      .update(whatsappSessions)
-      .set({ status: "disconnected" })
-      .where(eq(whatsappSessions.status, "connected"))
-      .returning();
+    const result = await updateReturningMany(
+      whatsappSessions,
+      eq(whatsappSessions.status, "connected"),
+      { status: "disconnected" }
+    );
     if (result.length > 0) {
       console.log(`[Startup] Marked ${result.length} sessions as disconnected (server restart)`);
     }
   } catch (error) {
+    if (handleDbError(error, "Startup")) {
+      return;
+    }
     console.error("[Startup] Error cleaning up sessions:", error);
   }
 }
@@ -62,7 +68,7 @@ async function autoMigrate() {
         await db.execute(`
           ALTER TABLE conversations
           ADD COLUMN IF NOT EXISTS takeover_mode BOOLEAN DEFAULT false,
-          ADD COLUMN IF NOT EXISTS takeover_expires_at TIMESTAMPTZ,
+          ADD COLUMN IF NOT EXISTS takeover_expires_at TIMESTAMP,
           ADD COLUMN IF NOT EXISTS takeover_admin_id TEXT;
         `);
         console.log("[Startup] ✅ Added takeover_mode columns");
@@ -71,6 +77,9 @@ async function autoMigrate() {
       }
     }
   } catch (error) {
+    if (handleDbError(error, "Startup")) {
+      return;
+    }
     console.error("[Startup] Error during auto-migrate:", error);
   }
 }
@@ -116,7 +125,11 @@ app.use("/data", express.static("data"));
 // Health check (no body parsing needed)
 app.get("/health", (req, res) => {
   res.json({
-    status: "ok",
+    status: isDbAvailable() ? "ok" : "degraded",
+    database: {
+      available: isDbAvailable(),
+      message: getDbStatusMessage(),
+    },
     timestamp: new Date().toISOString(),
     version: "1.0.0"
   });
@@ -168,5 +181,9 @@ httpServer.listen(PORT, async () => {
   await cleanupOldSessions();
 
   // Start blast scheduler (check for scheduled campaigns every 30 seconds)
-  startScheduler(30000);
+  if (isDbAvailable()) {
+    startScheduler(30000);
+  } else {
+    console.warn("[Startup] Scheduler not started because database is unavailable");
+  }
 });

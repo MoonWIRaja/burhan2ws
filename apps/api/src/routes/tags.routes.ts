@@ -2,6 +2,7 @@ import { Router } from "express";
 import { db, tags, contactTags } from "@whatsapp-blast/database";
 import { eq, and, count, desc } from "drizzle-orm";
 import { getSessionId, getRealUserId } from "../utils/get-user.js";
+import { deleteReturningOne, insertReturningOne, updateReturningOne } from "../utils/db-compat.js";
 
 const router = Router();
 
@@ -56,14 +57,11 @@ router.post("/", async (req, res) => {
       return res.status(400).json({ error: "Tag name is required" });
     }
 
-    const [tag] = await db
-      .insert(tags)
-      .values({
-        userId,
-        name,
-        color: color || "green",
-      })
-      .returning();
+    const tag = await insertReturningOne(tags, {
+      userId,
+      name,
+      color: color || "green",
+    });
 
     res.status(201).json(tag);
   } catch (error: any) {
@@ -121,11 +119,11 @@ router.patch("/:id", async (req, res) => {
 
     const { name, color } = req.body;
 
-    const [updated] = await db
-      .update(tags)
-      .set({ name, color })
-      .where(and(eq(tags.id, req.params.id), eq(tags.userId, userId)))
-      .returning();
+    const updated = await updateReturningOne(
+      tags,
+      and(eq(tags.id, req.params.id), eq(tags.userId, userId)),
+      { name, color }
+    );
 
     if (!updated) {
       return res.status(404).json({ error: "Tag not found" });
@@ -170,10 +168,10 @@ router.delete("/:id", async (req, res) => {
     }
 
     // Safe to delete - no contacts using this tag
-    const [deleted] = await db
-      .delete(tags)
-      .where(and(eq(tags.id, req.params.id), eq(tags.userId, userId)))
-      .returning();
+    const deleted = await deleteReturningOne(
+      tags,
+      and(eq(tags.id, req.params.id), eq(tags.userId, userId))
+    );
 
     res.json({ success: true, deleted });
   } catch (error) {

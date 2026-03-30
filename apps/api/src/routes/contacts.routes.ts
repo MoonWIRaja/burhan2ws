@@ -1,11 +1,11 @@
 import { Router } from "express";
 import { db, contacts, contactTags, tags, conversations, normalizePhoneNumber } from "@whatsapp-blast/database";
-import { eq, and, ilike, or, inArray, desc, sql, count } from "drizzle-orm";
+import { eq, and, or, inArray, desc, sql, count } from "drizzle-orm";
 import multer from "multer";
 import { parse } from "csv-parse/sync";
-import { createId } from "@paralleldrive/cuid2";
 import { getSessionId, getRealUserId } from "../utils/get-user.js";
 import { whatsappInstances } from "@whatsapp-blast/whatsapp";
+import { ciLike, deleteReturningMany, deleteReturningOne, insertReturningOne, updateReturningOne } from "../utils/db-compat.js";
 
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage() });
@@ -30,8 +30,8 @@ router.get("/", async (req, res) => {
     // Add search condition
     if (search) {
       const searchCondition = or(
-        ilike(contacts.name, `%${search}%`),
-        ilike(contacts.phoneNumber, `%${search}%`)
+        ciLike(contacts.name, String(search)),
+        ciLike(contacts.phoneNumber, String(search))
       );
       if (searchCondition) conditions.push(searchCondition);
     }
@@ -64,8 +64,8 @@ router.get("/", async (req, res) => {
     let countConditions = [eq(contacts.userId, userId)];
     if (search) {
       const searchCondition = or(
-        ilike(contacts.name, `%${search}%`),
-        ilike(contacts.phoneNumber, `%${search}%`)
+        ciLike(contacts.name, String(search)),
+        ciLike(contacts.phoneNumber, String(search))
       );
       if (searchCondition) countConditions.push(searchCondition);
     }
@@ -184,15 +184,12 @@ router.post("/", async (req, res) => {
     }
 
     // Create contact
-    const [contact] = await db
-      .insert(contacts)
-      .values({
-        userId,
-        name,
-        phoneNumber: normalizedPhone,
-        customData,
-      })
-      .returning();
+    const contact = await insertReturningOne(contacts, {
+      userId,
+      name,
+      phoneNumber: normalizedPhone,
+      customData,
+    });
 
     // Add tags if provided
     if (tagIds && tagIds.length > 0) {
@@ -257,15 +254,12 @@ router.post("/import", upload.single("file"), async (req, res) => {
         // Normalize phone number using shared utility
         phoneNumber = normalizePhoneNumber(phoneNumber);
 
-        const [contact] = await db
-          .insert(contacts)
-          .values({
-            userId,
-            name: record.name || record.Name || record.nama || null,
-            phoneNumber,
-            customData: record,
-          })
-          .returning();
+        const contact = await insertReturningOne(contacts, {
+          userId,
+          name: record.name || record.Name || record.nama || null,
+          phoneNumber,
+          customData: record,
+        });
 
         console.log("[Import] Created contact:", contact);
 
@@ -290,14 +284,11 @@ router.post("/import", upload.single("file"), async (req, res) => {
 
               if (!existingTag) {
                 console.log("[Import] Creating new tag:", tagName);
-                [existingTag] = await db
-                  .insert(tags)
-                  .values({
-                    userId,
-                    name: tagName,
-                    color: "green",
-                  })
-                  .returning();
+                existingTag = await insertReturningOne(tags, {
+                  userId,
+                  name: tagName,
+                  color: "green",
+                });
               } else {
                 console.log("[Import] Using existing tag:", existingTag);
               }
@@ -392,16 +383,16 @@ router.patch("/:id", async (req, res) => {
 
     const { name, phoneNumber, customData, tagIds } = req.body;
 
-    const [updated] = await db
-      .update(contacts)
-      .set({
+    const updated = await updateReturningOne(
+      contacts,
+      and(eq(contacts.id, req.params.id), eq(contacts.userId, userId)),
+      {
         name,
         phoneNumber,
         customData,
         updatedAt: new Date(),
-      })
-      .where(and(eq(contacts.id, req.params.id), eq(contacts.userId, userId)))
-      .returning();
+      }
+    );
 
     if (!updated) {
       return res.status(404).json({ error: "Contact not found" });
@@ -471,10 +462,10 @@ router.delete("/:id", async (req, res) => {
     }
     const userId = await getRealUserId(sessionId);
 
-    const [deleted] = await db
-      .delete(contacts)
-      .where(and(eq(contacts.id, req.params.id), eq(contacts.userId, userId)))
-      .returning();
+    const deleted = await deleteReturningOne(
+      contacts,
+      and(eq(contacts.id, req.params.id), eq(contacts.userId, userId))
+    );
 
     if (!deleted) {
       return res.status(404).json({ error: "Contact not found" });
@@ -501,10 +492,10 @@ router.post("/bulk-delete", async (req, res) => {
       return res.status(400).json({ error: "No contact IDs provided" });
     }
 
-    const deleted = await db
-      .delete(contacts)
-      .where(and(inArray(contacts.id, ids), eq(contacts.userId, userId)))
-      .returning();
+    const deleted = await deleteReturningMany(
+      contacts,
+      and(inArray(contacts.id, ids), eq(contacts.userId, userId))
+    );
 
     res.json({ success: true, deletedCount: deleted.length });
   } catch (error) {

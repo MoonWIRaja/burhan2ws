@@ -371,7 +371,7 @@ export default function BlastPage() {
   // CHUNKED UPLOAD - Break file into small chunks for slow Cloudflare Tunnel
   // Enhanced for 50MB+ files with adaptive chunk sizing and better retry logic
   const uploadSingleFile = async (file: File): Promise<Attachment | null> => {
-    const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+    const uploadApiBase = "/api/campaigns/upload/chunked";
     
     // Adaptive chunk sizing based on network speed
     // Start small, increase if fast, decrease if slow
@@ -440,7 +440,7 @@ export default function BlastPage() {
 
       try {
         const startTime = Date.now();
-        const chunkRes = await fetch(`${API_URL}/api/campaigns/upload/chunked/chunk`, {
+        const chunkRes = await fetch(`${uploadApiBase}/chunk`, {
           method: "POST",
           headers: {
             "Content-Type": "application/octet-stream",
@@ -486,7 +486,7 @@ export default function BlastPage() {
 
     try {
       // Step 1: Initialize chunked upload (use average chunk size for estimation)
-      const startRes = await fetch(`${API_URL}/api/campaigns/upload/chunked/start`, {
+      const startRes = await fetch(`${uploadApiBase}/start`, {
         method: "POST",
         headers: authHeaders,
         body: JSON.stringify({
@@ -525,7 +525,7 @@ export default function BlastPage() {
         
         if (!success) {
           console.error(`[ChunkedUpload] Chunk ${chunkNum} failed after ${MAX_RETRIES} attempts`);
-          await fetch(`${API_URL}/api/campaigns/upload/chunked/cancel`, {
+          await fetch(`${uploadApiBase}/cancel`, {
             method: "POST",
             headers: authHeaders,
             body: JSON.stringify({ uploadId }),
@@ -555,7 +555,7 @@ export default function BlastPage() {
 
       // Step 3: Complete upload
       console.log("[ChunkedUpload] All chunks uploaded, completing...");
-      const completeRes = await fetch(`${API_URL}/api/campaigns/upload/chunked/complete`, {
+      const completeRes = await fetch(`${uploadApiBase}/complete`, {
         method: "POST",
         headers: authHeaders,
         body: JSON.stringify({ uploadId }),

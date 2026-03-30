@@ -27,13 +27,23 @@ A powerful WhatsApp marketing and AI automation tool built with Next.js 15, Expr
 2. Setup environment variables:
    Create `.env` in root and `apps/api`:
    ```env
-   DATABASE_URL="postgresql://user:pass@localhost:5432/whatsappapp"
+   DB_PROVIDER="postgresql"
+   DATABASE_URL="postgresql://postgres.[project-ref]:[password]@aws-0-[region].pooler.supabase.com:6543/postgres"
+   BETTER_AUTH_SECRET="your-secret"
+   ```
+
+   Recommended: use Supabase Postgres with the transaction pooler connection string.
+
+   For MySQL:
+   ```env
+   DB_PROVIDER="mysql"
+   DATABASE_URL="mysql://root:password@localhost:3306/whatsappapp"
    BETTER_AUTH_SECRET="your-secret"
    ```
 
 3. Run migrations:
    ```bash
-   npx prisma migrate dev
+   npm run db:push
    ```
 
 4. Start development:

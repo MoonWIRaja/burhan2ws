@@ -14,6 +14,20 @@ export async function GET(request: NextRequest) {
       },
     });
     const data = await response.json();
+    if (!response.ok) {
+      return NextResponse.json(
+        {
+          connected: false,
+          status: "db_unavailable",
+          phoneNumber: null,
+          displayName: null,
+          profilePicUrl: null,
+          backendUnavailable: true,
+          message: data?.message || "Backend unavailable",
+        },
+        { status: 200 }
+      );
+    }
     return NextResponse.json(data);
   } catch (error) {
     return NextResponse.json(

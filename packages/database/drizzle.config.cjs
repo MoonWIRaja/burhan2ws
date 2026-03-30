@@ -1,9 +1,6 @@
-import { defineConfig } from "drizzle-kit";
-import dotenv from "dotenv";
-import path from "path";
-import { fileURLToPath } from "url";
+const path = require("path");
+const dotenv = require("dotenv");
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: path.resolve(__dirname, "../../.env") });
 
 const dbProvider = (process.env.DB_PROVIDER || "postgresql").toLowerCase() === "mysql" ? "mysql" : "postgresql";
@@ -13,7 +10,7 @@ const databaseUrl =
     ? "mysql://root:password@localhost:3306/whatsapp_blast"
     : "postgresql://localhost:5432/whatsapp_blast");
 
-export default defineConfig({
+module.exports = {
   dialect: dbProvider,
   schema: dbProvider === "mysql" ? "./src/schema/mysql.ts" : "./src/schema/postgres.ts",
   out: "./drizzle",
@@ -22,4 +19,4 @@ export default defineConfig({
   },
   verbose: true,
   strict: false,
-});
+};

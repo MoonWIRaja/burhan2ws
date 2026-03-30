@@ -19,6 +19,26 @@ services:
     networks:
       - backend_network
 
+  mysql:
+    image: mysql:8.4
+    container_name: whatsapp_mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: whatsapp_blast
+      MYSQL_USER: burhan
+      MYSQL_PASSWORD: burhan2ws
+    command: --default-authentication-plugin=mysql_native_password
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -uroot -proot"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - backend_network
+
   redis:
     image: redis:7.2.4-alpine
     container_name: whatsapp_redis
@@ -41,12 +61,11 @@ services:
     container_name: whatsapp_api
     restart: unless-stopped
     depends_on:
-      postgres:
-        condition: service_healthy
       redis:
         condition: service_healthy
     environment:
-      - DATABASE_URL=postgresql://burhan:burhan2ws@postgres:5432/whatsapp_blast
+      - DB_PROVIDER=${DB_PROVIDER:-postgresql}
+      - DATABASE_URL=${DATABASE_URL:-postgresql://burhan:burhan2ws@postgres:5432/whatsapp_blast}
       - REDIS_URL=redis://redis:6379
       - PORT=3001
       - NODE_ENV=production
@@ -91,6 +110,7 @@ services:
 
 volumes:
   postgres_data:
+  mysql_data:
   redis_data:
   whatsapp_data:
 

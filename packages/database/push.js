@@ -8,7 +8,7 @@ console.log('Running drizzle-kit push with auto-confirm...');
 
 try {
   // Run drizzle-kit push with stdin input
-  const result = execSync('echo y | npx drizzle-kit push', {
+  const result = execSync('printf "Yes, I want to execute all statements\\n" | npx drizzle-kit push --config=drizzle.config.cjs', {
     cwd: __dirname,
     stdio: 'inherit',
     shell: true

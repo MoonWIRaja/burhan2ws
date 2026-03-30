@@ -6,7 +6,7 @@ import { prismaAdapter } from "better-auth/adapters/prisma";
 export function createAuth(prisma: any) {
     return betterAuth({
         database: prismaAdapter(prisma, {
-            provider: "postgresql",
+            provider: process.env.DB_PROVIDER === "mysql" ? "mysql" : "postgresql",
         }),
         emailAndPassword: {
             enabled: true,

@@ -6,6 +6,7 @@ import multer from "multer";
 import path from "path";
 import fs from "fs/promises";
 import { getSessionId, getRealUserId } from "../utils/get-user.js";
+import { deleteReturningOne, insertReturningOne, updateReturningOne } from "../utils/db-compat.js";
 
 const router = Router();
 
@@ -502,22 +503,19 @@ router.post("/", async (req, res) => {
     }
 
     // Create campaign
-    const [campaign] = await db
-      .insert(campaigns)
-      .values({
-        userId,
-        title,
-        message,
-        mediaUrl,
-        mediaType,
-        attachments: attachments || null, // Store attachments array as JSON
-        status: scheduledAt ? "scheduled" : "draft",
-        recipientCount: recipientIds?.length || 0,
-        scheduledAt: scheduledAt ? new Date(scheduledAt) : null,
-        delayMin: delayMin || 3000,
-        delayMax: delayMax || 10000,
-      })
-      .returning();
+    const campaign = await insertReturningOne(campaigns, {
+      userId,
+      title,
+      message,
+      mediaUrl,
+      mediaType,
+      attachments: attachments || null, // Store attachments array as JSON
+      status: scheduledAt ? "scheduled" : "draft",
+      recipientCount: recipientIds?.length || 0,
+      scheduledAt: scheduledAt ? new Date(scheduledAt) : null,
+      delayMin: delayMin || 3000,
+      delayMax: delayMax || 10000,
+    });
 
     // Add recipients if provided
     if (recipientIds && recipientIds.length > 0) {
@@ -567,15 +565,11 @@ router.post("/:id/start", async (req, res) => {
       return res.status(400).json({ error: "Campaign is already running" });
     }
 
-    const [updated] = await db
-      .update(campaigns)
-      .set({
-        status: "running",
-        startedAt: campaign.startedAt || new Date(),
-        updatedAt: new Date(),
-      })
-      .where(eq(campaigns.id, req.params.id))
-      .returning();
+    const updated = await updateReturningOne(campaigns, eq(campaigns.id, req.params.id), {
+      status: "running",
+      startedAt: campaign.startedAt || new Date(),
+      updatedAt: new Date(),
+    });
 
     // Trigger blast service in background
     processCampaign(campaign.id).catch(err => {
@@ -601,14 +595,14 @@ router.post("/:id/pause", async (req, res) => {
     // Tell blast service to pause
     pauseCampaign(req.params.id);
 
-    const [updated] = await db
-      .update(campaigns)
-      .set({
+    const updated = await updateReturningOne(
+      campaigns,
+      and(eq(campaigns.id, req.params.id), eq(campaigns.userId, userId)),
+      {
         status: "paused",
         updatedAt: new Date(),
-      })
-      .where(and(eq(campaigns.id, req.params.id), eq(campaigns.userId, userId)))
-      .returning();
+      }
+    );
 
     if (!updated) {
       return res.status(404).json({ error: "Campaign not found" });
@@ -642,14 +636,10 @@ router.post("/:id/resume", async (req, res) => {
       return res.status(400).json({ error: "Campaign is already running" });
     }
 
-    const [updated] = await db
-      .update(campaigns)
-      .set({
-        status: "running",
-        updatedAt: new Date(),
-      })
-      .where(eq(campaigns.id, req.params.id))
-      .returning();
+    const updated = await updateReturningOne(campaigns, eq(campaigns.id, req.params.id), {
+      status: "running",
+      updatedAt: new Date(),
+    });
 
     // Tell blast service to resume and process campaign
     resumeCampaign(req.params.id);
@@ -707,10 +697,10 @@ router.delete("/:id", async (req, res) => {
     }
     const userId = await getRealUserId(sessionId);
 
-    const [deleted] = await db
-      .delete(campaigns)
-      .where(and(eq(campaigns.id, req.params.id), eq(campaigns.userId, userId)))
-      .returning();
+    const deleted = await deleteReturningOne(
+      campaigns,
+      and(eq(campaigns.id, req.params.id), eq(campaigns.userId, userId))
+    );
 
     if (!deleted) {
       return res.status(404).json({ error: "Campaign not found" });

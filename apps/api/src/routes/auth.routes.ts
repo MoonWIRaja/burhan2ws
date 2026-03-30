@@ -9,6 +9,9 @@ import fs from "fs/promises";
 import { processBotMessage, BotResponse } from "../services/bot-processor.service.js";
 import { saveMessage } from "../services/message-storage.service.js";
 import { getRealUserId, getSessionId } from "../utils/get-user.js";
+import { insertReturningOne } from "../utils/db-compat.js";
+import { handleDbError, sendDbUnavailable } from "../utils/db-errors.js";
+import { getDbStatusMessage, isDbAvailable } from "../utils/db-state.js";
 
 const router = Router();
 
@@ -51,15 +54,12 @@ async function ensureUserExists(phoneNumber: string) {
 
   if (!user) {
     // Create new user with phone number as ID
-    const [newUser] = await db
-      .insert(users)
-      .values({
-        id: userId,
-        name: `User ${phoneNumber}`,
-        email: `${userId}@whatsapp.local`,
-        dataPath: `/data/${userId}`,
-      })
-      .returning();
+    const newUser = await insertReturningOne(users, {
+      id: userId,
+      name: `User ${phoneNumber}`,
+      email: `${userId}@whatsapp.local`,
+      dataPath: `/data/${userId}`,
+    });
     console.log(`[Auth] Created new user: ${userId} for phone: ${phoneNumber}`);
     user = newUser;
   }
@@ -103,6 +103,9 @@ router.get("/session", async (req, res) => {
       displayName: existingSession?.displayName || null,
     });
   } catch (error) {
+    if (handleDbError(error, "Auth")) {
+      return sendDbUnavailable(res);
+    }
     console.error("Error getting session:", error);
     res.status(500).json({ error: "Failed to get session" });
   }
@@ -111,6 +114,14 @@ router.get("/session", async (req, res) => {
 // GET /api/auth/qr - Get current QR code
 router.get("/qr", async (req, res) => {
   try {
+    if (!isDbAvailable()) {
+      return res.status(503).json({
+        status: "db_unavailable",
+        qr: null,
+        message: getDbStatusMessage(),
+      });
+    }
+
     const sessionId = getSessionId(req);
     if (!sessionId) {
       return res.status(401).json({ error: "No session" });
@@ -130,6 +141,9 @@ router.get("/qr", async (req, res) => {
       phoneNumber: session.phoneNumber,
     });
   } catch (error) {
+    if (handleDbError(error, "Auth")) {
+      return sendDbUnavailable(res);
+    }
     console.error("Error getting QR:", error);
     res.status(500).json({ error: "Failed to get QR code" });
   }
@@ -138,6 +152,17 @@ router.get("/qr", async (req, res) => {
 // GET /api/auth/status - Check current session status
 router.get("/status", async (req, res) => {
   try {
+    if (!isDbAvailable()) {
+      return res.status(503).json({
+        connected: false,
+        status: "db_unavailable",
+        phoneNumber: null,
+        displayName: null,
+        profilePicUrl: null,
+        message: getDbStatusMessage(),
+      });
+    }
+
     const sessionId = getSessionId(req);
     if (!sessionId) {
       return res.json({
@@ -311,6 +336,9 @@ router.get("/status", async (req, res) => {
       lastConnectedAt: session.lastConnectedAt,
     });
   } catch (error) {
+    if (handleDbError(error, "Auth")) {
+      return sendDbUnavailable(res);
+    }
     console.error("Error getting status:", error);
     res.status(500).json({ error: "Failed to get status" });
   }
@@ -319,6 +347,14 @@ router.get("/status", async (req, res) => {
 // POST /api/auth/connect - Initialize WhatsApp connection
 router.post("/connect", async (req, res) => {
   try {
+    if (!isDbAvailable()) {
+      return res.status(503).json({
+        status: "db_unavailable",
+        qr: null,
+        message: getDbStatusMessage(),
+      });
+    }
+
     const sessionId = getSessionId(req);
     if (!sessionId) {
       return res.status(401).json({ error: "No session. Please refresh the page." });
@@ -377,15 +413,12 @@ router.post("/connect", async (req, res) => {
         // User already exists, ignore
       }
 
-      const [newSession] = await db
-        .insert(whatsappSessions)
-        .values({
-          id: createId(),
-          userId,
-          browserSessionId: sessionId, // Track the browser session for lookups
-          status: "qr_pending",
-        })
-        .returning();
+      const newSession = await insertReturningOne(whatsappSessions, {
+        id: createId(),
+        userId,
+        browserSessionId: sessionId, // Track the browser session for lookups
+        status: "qr_pending",
+      });
       session = newSession;
     } else {
       await db
@@ -610,20 +643,17 @@ router.post("/connect", async (req, res) => {
       } else {
         // No session exists at all - create a new one
         console.log(`[${userId}] ⚠️ No session found, creating new session record`);
-        const [newSession] = await db
-          .insert(whatsappSessions)
-          .values({
-            id: createId(),
-            userId: realUserId,
-            browserSessionId: userId,
-            status: "connected",
-            phoneNumber,
-            displayName: finalDisplayName,
-            about: finalAbout,
-            profilePicUrl: finalProfilePicUrl,
-            lastConnectedAt: new Date(),
-          })
-          .returning();
+        const newSession = await insertReturningOne(whatsappSessions, {
+          id: createId(),
+          userId: realUserId,
+          browserSessionId: userId,
+          status: "connected",
+          phoneNumber,
+          displayName: finalDisplayName,
+          about: finalAbout,
+          profilePicUrl: finalProfilePicUrl,
+          lastConnectedAt: new Date(),
+        });
         console.log(`[${userId}] ✅ Created new session: ${newSession.id}`);
       }
 

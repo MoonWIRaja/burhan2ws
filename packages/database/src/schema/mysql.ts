@@ -1,9 +1,19 @@
-import { dbProvider } from "../config.js";
-import { schema as mysqlSchema } from "./mysql.js";
-import { schema as postgresSchema } from "./postgres.js";
+import { mysqlTable, text, timestamp, boolean, int, json, primaryKey } from "drizzle-orm/mysql-core";
+import { createSchema } from "./factory.ts";
 
-export const schema = dbProvider === "mysql" ? mysqlSchema : postgresSchema;
+const mysqlTimestamp = (name: string) => timestamp(name, { mode: "date" });
 
+const createdSchema = createSchema({
+  table: mysqlTable,
+  text,
+  timestamp: mysqlTimestamp,
+  boolean,
+  integer: int,
+  json,
+  primaryKey,
+});
+
+export const schema = createdSchema;
 export const {
   users,
   sessions,
@@ -31,4 +41,4 @@ export const {
   campaignsRelations,
   campaignRecipientsRelations,
   botCommandsRelations,
-} = schema;
+} = createdSchema;

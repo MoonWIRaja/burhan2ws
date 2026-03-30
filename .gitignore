@@ -1,1 +1,18 @@
 node_modules
+.next
+.turbo
+dist
+*.log
+.DS_Store
+
+# Local environment
+.env.local
+.env.*.local
+
+# Runtime data and uploads
+apps/api/data/uploads/
+apps/api/data/*/
+
+# Temporary odd shell artifacts
+statement-breakpoint
+web@0.1.0

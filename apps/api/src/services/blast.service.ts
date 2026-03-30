@@ -3,6 +3,7 @@ import { eq, and, inArray, sql } from "drizzle-orm";
 import { getWhatsAppInstance, hasActiveInstance } from "@whatsapp-blast/whatsapp";
 import fs from "fs/promises";
 import path from "path";
+import { handleDbError } from "../utils/db-errors.js";
 
 // Track active campaigns for pausing
 const activeCampaigns = new Set<string>();
@@ -581,6 +582,10 @@ export async function processCampaign(campaignId: string): Promise<void> {
       console.log(`[Blast] Campaign ${campaignId} ${finalStatus}. Sent: ${sentCount}, Failed: ${failedCount}`);
     }
   } catch (error) {
+    if (handleDbError(error, "Blast")) {
+      activeCampaigns.delete(campaignId);
+      return;
+    }
     console.error(`[Blast] Error processing campaign ${campaignId}:`, error);
 
     // Mark campaign as failed on error
@@ -615,6 +620,11 @@ export async function checkScheduledCampaigns(): Promise<void> {
       }
     }
   } catch (error) {
+    if (handleDbError(error, "Blast")) {
+      stopScheduler();
+      console.warn("[Blast] Scheduler stopped because database is unavailable");
+      return;
+    }
     console.error("[Blast] Error checking scheduled campaigns:", error);
   }
 }
